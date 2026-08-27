@@ -14,7 +14,222 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      activities: {
+        Row: {
+          avg_speed_kmh: number
+          created_at: string
+          distance_m: number
+          duration_s: number
+          elevation_gain_m: number
+          ended_at: string
+          id: string
+          max_altitude_m: number | null
+          max_speed_kmh: number
+          min_altitude_m: number | null
+          moving_time_s: number
+          notes: string | null
+          place_label: string | null
+          sport: string
+          start_lat: number | null
+          start_lng: number | null
+          started_at: string
+          title: string
+          track: Json
+          updated_at: string
+          user_id: string
+          visibility: string
+        }
+        Insert: {
+          avg_speed_kmh?: number
+          created_at?: string
+          distance_m?: number
+          duration_s?: number
+          elevation_gain_m?: number
+          ended_at?: string
+          id?: string
+          max_altitude_m?: number | null
+          max_speed_kmh?: number
+          min_altitude_m?: number | null
+          moving_time_s?: number
+          notes?: string | null
+          place_label?: string | null
+          sport?: string
+          start_lat?: number | null
+          start_lng?: number | null
+          started_at?: string
+          title?: string
+          track?: Json
+          updated_at?: string
+          user_id: string
+          visibility?: string
+        }
+        Update: {
+          avg_speed_kmh?: number
+          created_at?: string
+          distance_m?: number
+          duration_s?: number
+          elevation_gain_m?: number
+          ended_at?: string
+          id?: string
+          max_altitude_m?: number | null
+          max_speed_kmh?: number
+          min_altitude_m?: number | null
+          moving_time_s?: number
+          notes?: string | null
+          place_label?: string | null
+          sport?: string
+          start_lat?: number | null
+          start_lng?: number | null
+          started_at?: string
+          title?: string
+          track?: Json
+          updated_at?: string
+          user_id?: string
+          visibility?: string
+        }
+        Relationships: []
+      }
+      activity_comments: {
+        Row: {
+          activity_id: string
+          body: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          activity_id: string
+          body: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          activity_id?: string
+          body?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_comments_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "activities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      activity_likes: {
+        Row: {
+          activity_id: string
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          activity_id: string
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          activity_id?: string
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_likes_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "activities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      favorites: {
+        Row: {
+          activity_id: string
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          activity_id: string
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          activity_id?: string
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "favorites_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "activities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      follows: {
+        Row: {
+          created_at: string
+          follower_id: string
+          following_id: string
+        }
+        Insert: {
+          created_at?: string
+          follower_id: string
+          following_id: string
+        }
+        Update: {
+          created_at?: string
+          follower_id?: string
+          following_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          bike: string | null
+          bio: string | null
+          created_at: string
+          disciplines: string[]
+          display_name: string | null
+          id: string
+          is_private: boolean
+          updated_at: string
+          username: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          bike?: string | null
+          bio?: string | null
+          created_at?: string
+          disciplines?: string[]
+          display_name?: string | null
+          id: string
+          is_private?: boolean
+          updated_at?: string
+          username?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          bike?: string | null
+          bio?: string | null
+          created_at?: string
+          disciplines?: string[]
+          display_name?: string | null
+          id?: string
+          is_private?: boolean
+          updated_at?: string
+          username?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
