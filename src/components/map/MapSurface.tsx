@@ -7,7 +7,7 @@ const LazyRideMap = lazy(() => import("./RideMap"));
 
 type Props = ComponentProps<typeof RideMap>;
 
-function MapSkeleton({ className }: { className?: string }) {
+function MapSkeleton({ className }: { className?: string | undefined }) {
   return (
     <div className={className}>
       <div className="h-full w-full animate-pulse bg-surface-2" />

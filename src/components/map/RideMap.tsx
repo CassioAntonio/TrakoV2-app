@@ -1,5 +1,7 @@
 import { useEffect, useRef } from "react";
-import maplibregl, { type LngLatBoundsLike, type Map as MLMap } from "maplibre-gl";
+import * as maplibregl from "maplibre-gl";
+import type { Feature, LineString } from "geojson";
+import type { LngLatBoundsLike, Map as MLMap } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { TrackPoint } from "@/types/trako";
 import { boundsOf } from "@/lib/geo";
@@ -47,7 +49,7 @@ const STYLE: maplibregl.StyleSpecification = {
   ],
 };
 
-function lineFeature(points: TrackPoint[]): GeoJSON.Feature<GeoJSON.LineString> {
+function lineFeature(points: TrackPoint[]): Feature<LineString> {
   return {
     type: "Feature",
     properties: {},
