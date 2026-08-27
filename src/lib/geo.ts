@@ -47,20 +47,22 @@ export function computeTrackStats(points: TrackPoint[]): TrackStats {
   let lastAlt: number | null = null;
   for (let i = 0; i < points.length; i++) {
     const p = points[i];
-    if (typeof p.alt === "number" && Number.isFinite(p.alt)) {
-      stats.minAltitudeM = stats.minAltitudeM === null ? p.alt : Math.min(stats.minAltitudeM, p.alt);
-      stats.maxAltitudeM = stats.maxAltitudeM === null ? p.alt : Math.max(stats.maxAltitudeM, p.alt);
-      if (lastAlt === null) lastAlt = p.alt;
-      else if (p.alt - lastAlt > ELEVATION_NOISE_M) {
-        stats.elevationGainM += p.alt - lastAlt;
-        lastAlt = p.alt;
-      } else if (lastAlt - p.alt > ELEVATION_NOISE_M) {
-        lastAlt = p.alt;
+    if (!p) continue;
+    const alt = p.alt;
+    if (typeof alt === "number" && Number.isFinite(alt)) {
+      stats.minAltitudeM = stats.minAltitudeM === null ? alt : Math.min(stats.minAltitudeM, alt);
+      stats.maxAltitudeM = stats.maxAltitudeM === null ? alt : Math.max(stats.maxAltitudeM, alt);
+      if (lastAlt === null) lastAlt = alt;
+      else if (alt - lastAlt > ELEVATION_NOISE_M) {
+        stats.elevationGainM += alt - lastAlt;
+        lastAlt = alt;
+      } else if (lastAlt - alt > ELEVATION_NOISE_M) {
+        lastAlt = alt;
       }
     }
 
-    if (i === 0) continue;
     const prev = points[i - 1];
+    if (i === 0 || !prev) continue;
     const d = haversine(prev, p);
     const dt = (p.t - prev.t) / 1000;
     if (dt <= 0) continue;
@@ -70,18 +72,21 @@ export function computeTrackStats(points: TrackPoint[]): TrackStats {
     stats.maxSpeedKmh = Math.max(stats.maxSpeedKmh, segSpeed * 3.6);
   }
 
-  stats.durationS = Math.max(0, (points[points.length - 1].t - points[0].t) / 1000);
+  const first = points[0];
+  const last = points[points.length - 1];
+  stats.durationS = first && last ? Math.max(0, (last.t - first.t) / 1000) : 0;
   const base = stats.movingTimeS > 0 ? stats.movingTimeS : stats.durationS;
   stats.avgSpeedKmh = base > 0 ? (stats.distanceM / base) * 3.6 : 0;
   return stats;
 }
 
 export function boundsOf(points: { lat: number; lng: number }[]) {
-  if (points.length === 0) return null;
-  let minLat = points[0].lat;
-  let maxLat = points[0].lat;
-  let minLng = points[0].lng;
-  let maxLng = points[0].lng;
+  const head = points[0];
+  if (!head) return null;
+  let minLat = head.lat;
+  let maxLat = head.lat;
+  let minLng = head.lng;
+  let maxLng = head.lng;
   for (const p of points) {
     minLat = Math.min(minLat, p.lat);
     maxLat = Math.max(maxLat, p.lat);
@@ -90,6 +95,7 @@ export function boundsOf(points: { lat: number; lng: number }[]) {
   }
   return { minLat, maxLat, minLng, maxLng };
 }
+
 
 /** Drops noisy fixes so the drawn track and the stats stay honest. */
 export function shouldKeepPoint(prev: TrackPoint | undefined, next: TrackPoint): boolean {
@@ -113,8 +119,9 @@ export async function reverseGeocode(lat: number, lng: number): Promise<string |
     if (!res.ok) return null;
     const data = (await res.json()) as { address?: Record<string, string> };
     const a = data.address ?? {};
-    const city = a.city ?? a.town ?? a.village ?? a.municipality ?? a.county ?? null;
-    const state = a.state_code ?? a.state ?? null;
+    const city = a["city"] ?? a["town"] ?? a["village"] ?? a["municipality"] ?? a["county"] ?? null;
+    const state = a["state_code"] ?? a["state"] ?? null;
+
     if (city && state) return `${city} - ${state}`;
     return city ?? state ?? null;
   } catch {
