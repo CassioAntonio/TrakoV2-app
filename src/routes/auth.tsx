@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -74,14 +73,6 @@ function AuthScreen() {
     }
   };
 
-  const google = async () => {
-    try {
-      await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin });
-    } catch {
-      toast.error("Não foi possível entrar com o Google.");
-    }
-  };
-
   return (
     <main className="app-scroll flex min-h-dvh flex-col bg-background px-6 pb-10 pt-[calc(env(safe-area-inset-top,0px)+1rem)]">
       <Link
@@ -145,14 +136,6 @@ function AuthScreen() {
           {busy ? "Aguarde…" : mode === "signup" ? "Criar conta" : "Entrar"}
         </Button>
       </form>
-
-      <div className="my-5 flex items-center gap-3 text-[11px] uppercase tracking-widest text-muted-foreground">
-        <span className="h-px flex-1 bg-border" /> ou <span className="h-px flex-1 bg-border" />
-      </div>
-
-      <Button variant="surface" size="tap" className="w-full" onClick={google}>
-        Continuar com Google
-      </Button>
 
       <button
         type="button"
