@@ -1,12 +1,11 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { TrakoMark } from "@/components/trako/Brand";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { TrakoMark } from "@/components/trako/Brand";
 
 type Mode = "signin" | "signup";
 
@@ -18,10 +17,7 @@ export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
       { title: "Entrar no TRAKO" },
-      {
-        name: "description",
-        content: "Acesse sua conta TRAKO para gravar trilhas e acompanhar suas estatísticas.",
-      },
+      { name: "description", content: "Acesse sua conta TRAKO e continue registrando trilhas." },
       { property: "og:title", content: "Entrar no TRAKO" },
       { property: "og:description", content: "Acesse sua conta e registre suas trilhas." },
     ],
@@ -44,7 +40,7 @@ function AuthScreen() {
     });
   }, [navigate]);
 
-  const submit = async (e: React.FormEvent) => {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     try {
@@ -53,14 +49,18 @@ function AuthScreen() {
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/home`,
+            emailRedirectTo: `${window.location.origin}/`,
             data: { display_name: name || email.split("@")[0] },
           },
         });
         if (error) throw error;
         const { data } = await supabase.auth.getSession();
-        if (data.session) navigate({ to: "/home", replace: true });
-        else toast.success("Conta criada. Confirme seu e-mail para entrar.");
+        if (data.session) {
+          navigate({ to: "/home", replace: true });
+        } else {
+          toast.success("Conta criada. Confirme seu e-mail para entrar.");
+          setMode("signin");
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -71,87 +71,78 @@ function AuthScreen() {
     } finally {
       setBusy(false);
     }
-  };
+  }
 
   return (
-    <main className="app-scroll flex min-h-dvh flex-col bg-background px-6 pb-10 pt-[calc(env(safe-area-inset-top,0px)+1rem)]">
-      <Link
-        to="/welcome"
-        className="inline-flex w-fit items-center gap-1 text-sm text-muted-foreground"
-      >
-        <ArrowLeft className="h-4 w-4" /> Voltar
-      </Link>
+    <main className="flex min-h-dvh flex-col justify-center bg-background px-6 py-10">
+      <div className="mx-auto w-full max-w-sm space-y-6">
+        <div className="flex flex-col items-center gap-2">
+          <TrakoMark className="h-16 w-16" />
+          <h1 className="font-display text-2xl font-bold">
+            {mode === "signup" ? "Criar conta" : "Entrar"}
+          </h1>
+          <p className="text-xs text-muted-foreground">Your ride. Your trail.</p>
+        </div>
 
-      <div className="mt-8 flex flex-col items-center gap-2">
-        <TrakoMark className="h-16 w-16" />
-        <h1 className="font-display text-2xl font-bold">
-          {mode === "signup" ? "Criar conta" : "Entrar"}
-        </h1>
-        <p className="text-xs text-muted-foreground">Suas trilhas, seus números.</p>
-      </div>
-
-      <form onSubmit={submit} className="mt-8 space-y-4">
-        {mode === "signup" && (
+        <form onSubmit={submit} className="space-y-4">
+          {mode === "signup" && (
+            <div className="space-y-1.5">
+              <Label htmlFor="name">Nome do piloto</Label>
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Como te chamam na trilha"
+                className="h-12"
+                autoComplete="name"
+              />
+            </div>
+          )}
           <div className="space-y-1.5">
-            <Label htmlFor="name">Nome do piloto</Label>
+            <Label htmlFor="email">E-mail</Label>
             <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Como te chamam nas trilhas"
+              id="email"
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               className="h-12"
-              autoComplete="name"
+              autoComplete="email"
             />
           </div>
-        )}
-        <div className="space-y-1.5">
-          <Label htmlFor="email">E-mail</Label>
-          <Input
-            id="email"
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="voce@email.com"
-            className="h-12"
-            autoComplete="email"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="password">Senha</Label>
-          <Input
-            id="password"
-            type="password"
-            required
-            minLength={6}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="mínimo 6 caracteres"
-            className="h-12"
-            autoComplete={mode === "signup" ? "new-password" : "current-password"}
-          />
-        </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="password">Senha</Label>
+            <Input
+              id="password"
+              type="password"
+              required
+              minLength={6}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="h-12"
+              autoComplete={mode === "signup" ? "new-password" : "current-password"}
+            />
+          </div>
 
-        <Button type="submit" variant="action" size="tap" className="w-full" disabled={busy}>
-          {busy ? "Aguarde…" : mode === "signup" ? "Criar conta" : "Entrar"}
-        </Button>
-      </form>
+          <Button type="submit" variant="action" size="tap" className="w-full" disabled={busy}>
+            {busy ? "Aguarde…" : mode === "signup" ? "Criar conta" : "Entrar"}
+          </Button>
+        </form>
 
-      <button
-        type="button"
-        onClick={() => setMode(mode === "signup" ? "signin" : "signup")}
-        className="mt-6 text-center text-sm text-muted-foreground"
-      >
-        {mode === "signup" ? (
-          <>
-            Já tem conta? <span className="font-semibold text-primary">Entrar</span>
-          </>
-        ) : (
-          <>
-            Novo por aqui? <span className="font-semibold text-primary">Criar conta</span>
-          </>
-        )}
-      </button>
+        <button
+          type="button"
+          onClick={() => setMode(mode === "signup" ? "signin" : "signup")}
+          className="w-full text-center text-sm text-muted-foreground underline-offset-4 hover:underline"
+        >
+          {mode === "signup" ? "Já tenho conta" : "Criar uma conta"}
+        </button>
+
+        <div className="text-center">
+          <Link to="/welcome" className="text-xs text-muted-foreground">
+            Voltar
+          </Link>
+        </div>
+      </div>
     </main>
   );
 }

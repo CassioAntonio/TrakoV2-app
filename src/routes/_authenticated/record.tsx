@@ -1,41 +1,40 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
-import { ChevronLeft, Pause, Play, Square, Satellite } from "lucide-react";
+import { Pause, Play, Square, Trash2, Satellite } from "lucide-react";
 import { MapSurface } from "@/components/map/MapSurface";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useAuth } from "@/hooks/useAuth";
 import { useRecorder } from "@/hooks/useRecorder";
+import { useAuth } from "@/hooks/useAuth";
 import { createActivity } from "@/services/activities";
 import { reverseGeocode } from "@/lib/geo";
-import { formatDuration, formatKm, formatSpeed } from "@/lib/format";
-import { DISCIPLINES, type Discipline, type Visibility } from "@/types/trako";
+import { formatDuration, formatKm, formatSpeed, formatNumber } from "@/lib/format";
+import { DISCIPLINES } from "@/types/trako";
+import type { Discipline, Visibility } from "@/types/trako";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/record")({
   head: () => ({
     meta: [
       { title: "Gravar trilha — TRAKO" },
-      {
-        name: "description",
-        content: "Grave sua trilha com GPS em tempo real: distância, velocidade e altitude.",
-      },
+      { name: "description", content: "Gravação GPS ao vivo: distância, tempo, velocidade e altitude." },
       { property: "og:title", content: "Gravar trilha — TRAKO" },
-      { property: "og:description", content: "Gravação GPS em tempo real da sua trilha." },
+      { property: "og:description", content: "Registre sua trilha com GPS em tempo real." },
     ],
   }),
   component: RecordScreen,
 });
 
 function RecordScreen() {
-  const navigate = useNavigate();
-  const { user } = useAuth();
-  const qc = useQueryClient();
   const rec = useRecorder();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
   const [visibility, setVisibility] = useState<Visibility>("private");
@@ -43,39 +42,41 @@ function RecordScreen() {
 
   const last = rec.points[rec.points.length - 1];
   const center = last ? { lat: last.lat, lng: last.lng } : null;
-  const altitude = useMemo(() => (typeof last?.alt === "number" ? Math.round(last.alt) : null), [last]);
 
-  const save = async () => {
+  async function save() {
     if (!user) return;
+    if (rec.points.length < 2) {
+      toast.error("Trilha muito curta para salvar.");
+      return;
+    }
     setSaving(true);
     try {
-      const first = rec.points[0];
-      const place = first ? await reverseGeocode(first.lat, first.lng) : null;
-      const startedAt = new Date(rec.startedAt ?? Date.now()).toISOString();
+      const first = rec.points[0]!;
+      const end = rec.points[rec.points.length - 1]!;
+      const place = await reverseGeocode(first.lat, first.lng);
       const activity = await createActivity({
         user_id: user.id,
-        title: title.trim() || "Trilha",
+        title: title.trim() || "Trilha sem nome",
         notes: notes.trim() || null,
         sport: rec.sport,
         visibility,
-        distance_m: rec.stats.distanceM,
+        distance_m: Math.round(rec.stats.distanceM),
         duration_s: Math.round(rec.elapsedS),
         moving_time_s: Math.round(rec.stats.movingTimeS),
-        avg_speed_kmh: rec.stats.avgSpeedKmh,
-        max_speed_kmh: rec.stats.maxSpeedKmh,
-        elevation_gain_m: rec.stats.elevationGainM,
+        avg_speed_kmh: Number(rec.stats.avgSpeedKmh.toFixed(2)),
+        max_speed_kmh: Number(rec.stats.maxSpeedKmh.toFixed(2)),
+        elevation_gain_m: Math.round(rec.stats.elevationGainM),
         min_altitude_m: rec.stats.minAltitudeM,
         max_altitude_m: rec.stats.maxAltitudeM,
-        started_at: startedAt,
-        ended_at: new Date().toISOString(),
-        start_lat: first?.lat ?? null,
-        start_lng: first?.lng ?? null,
+        started_at: new Date(first.t).toISOString(),
+        ended_at: new Date(end.t).toISOString(),
+        start_lat: first.lat,
+        start_lng: first.lng,
         place_label: place,
         track: rec.points,
       });
       rec.discard();
-      await qc.invalidateQueries({ queryKey: ["my-activities"] });
-      await qc.invalidateQueries({ queryKey: ["public-activities"] });
+      await queryClient.invalidateQueries({ queryKey: ["activities"] });
       toast.success("Trilha salva!");
       navigate({ to: "/activities/$id", params: { id: activity.id } });
     } catch (err) {
@@ -83,80 +84,70 @@ function RecordScreen() {
     } finally {
       setSaving(false);
     }
-  };
+  }
 
   if (rec.state === "finished") {
     return (
-      <div className="app-scroll h-full bg-background px-4 pb-8 pt-[calc(env(safe-area-inset-top,0px)+1rem)]">
-        <h1 className="font-display text-2xl font-bold">Finalizar trilha</h1>
-        <p className="text-xs text-muted-foreground">Confira os números antes de salvar.</p>
+      <div className="app-scroll h-full space-y-4 px-4 pb-6 pt-[calc(env(safe-area-inset-top,0px)+1rem)]">
+        <h1 className="font-display text-xl font-bold">Finalizar trilha</h1>
 
-        <div className="mt-4 h-44 overflow-hidden rounded-2xl border border-border">
-          <MapSurface className="h-full w-full" track={rec.points} fitTrack interactive={false} showUser={false} />
+        <div className="grid grid-cols-3 gap-3">
+          <Metric label="Distância" value={formatKm(rec.stats.distanceM)} unit="km" accent />
+          <Metric label="Tempo" value={formatDuration(rec.elapsedS)} />
+          <Metric label="Elevação" value={formatNumber(rec.stats.elevationGainM)} unit="m" />
         </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-3">
-          <Big label="Distância" value={formatKm(rec.stats.distanceM)} unit="km" accent />
-          <Big label="Tempo" value={formatDuration(rec.elapsedS)} />
-          <Big label="Vel. média" value={formatSpeed(rec.stats.avgSpeedKmh)} unit="km/h" />
-          <Big label="Vel. máxima" value={formatSpeed(rec.stats.maxSpeedKmh)} unit="km/h" />
-          <Big label="Elevação" value={Math.round(rec.stats.elevationGainM).toString()} unit="m" />
-          <Big
-            label="Altitude máx"
-            value={rec.stats.maxAltitudeM !== null ? Math.round(rec.stats.maxAltitudeM).toString() : "—"}
-            unit="m"
+        <MapSurface className="h-48 w-full overflow-hidden rounded-2xl" track={rec.points} fitTrack />
+
+        <div className="space-y-1.5">
+          <Label htmlFor="title">Nome da trilha</Label>
+          <Input
+            id="title"
+            className="h-12"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Ex.: Serra da Cantareira ao amanhecer"
           />
         </div>
 
-        <div className="mt-5 space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="title">Título</Label>
-            <Input
-              id="title"
-              className="h-12"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Trilha da manhã"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="notes">Notas</Label>
-            <Textarea
-              id="notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Como foi o terreno, o clima, a galera…"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Visibilidade</Label>
-            <div className="grid grid-cols-3 gap-2">
-              {(
-                [
-                  { id: "private", label: "Privada" },
-                  { id: "followers", label: "Seguidores" },
-                  { id: "public", label: "Pública" },
-                ] as { id: Visibility; label: string }[]
-              ).map((v) => (
-                <button
-                  key={v.id}
-                  type="button"
-                  onClick={() => setVisibility(v.id)}
-                  className={cn(
-                    "rounded-xl border px-2 py-2.5 text-xs font-semibold",
-                    visibility === v.id
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border bg-surface-2 text-muted-foreground",
-                  )}
-                >
-                  {v.label}
-                </button>
-              ))}
-            </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="notes">Notas</Label>
+          <Textarea
+            id="notes"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Terreno, condições, companhia…"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label>Visibilidade</Label>
+          <div className="grid grid-cols-3 gap-2">
+            {(
+              [
+                ["private", "Privada"],
+                ["followers", "Seguidores"],
+                ["public", "Pública"],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setVisibility(id)}
+                className={cn(
+                  "rounded-xl border px-3 py-2.5 text-xs font-medium",
+                  visibility === id
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border bg-surface-2 text-muted-foreground",
+                )}
+              >
+                {label}
+              </button>
+            ))}
           </div>
         </div>
 
-        <div className="mt-6 space-y-3">
+        <div className="space-y-2 pt-2">
           <Button variant="action" size="tap" className="w-full" onClick={save} disabled={saving}>
             {saving ? "Salvando…" : "Salvar trilha"}
           </Button>
@@ -166,10 +157,10 @@ function RecordScreen() {
             className="w-full"
             onClick={() => {
               rec.discard();
-              navigate({ to: "/home" });
+              toast("Gravação descartada.");
             }}
           >
-            Descartar
+            <Trash2 className="h-4 w-4" /> Descartar
           </Button>
         </div>
       </div>
@@ -179,124 +170,79 @@ function RecordScreen() {
   return (
     <div className="relative h-full">
       <MapSurface
-        className="absolute inset-0"
+        className="absolute inset-0 h-full w-full"
         center={center}
+        zoom={16}
         track={rec.points}
         follow={rec.state === "recording"}
-        zoom={16}
-        interactive={false}
+        showUser
       />
-      <div className="absolute inset-0 bg-gradient-to-b from-background/90 via-background/10 to-background/95" />
 
-      <div className="relative flex h-full flex-col px-4 pb-[calc(env(safe-area-inset-bottom,0px)+1rem)] pt-[calc(env(safe-area-inset-top,0px)+0.9rem)]">
+      <div className="absolute inset-x-0 top-0 space-y-3 bg-gradient-to-b from-background via-background/85 to-transparent px-4 pb-8 pt-[calc(env(safe-area-inset-top,0px)+1rem)]">
         <div className="flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() => navigate({ to: "/home" })}
-            className="inline-flex items-center gap-1 text-sm text-muted-foreground"
-          >
-            <ChevronLeft className="h-4 w-4" /> Início
-          </button>
-          <span
-            className={cn(
-              "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold",
-              rec.gpsError
-                ? "border-destructive/50 text-destructive"
-                : "border-primary/40 text-primary",
-            )}
-          >
-            <Satellite className="h-3.5 w-3.5" />
+          <span className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Satellite className={cn("h-4 w-4", rec.gpsError ? "text-destructive" : "text-primary")} />
             {rec.gpsError
-              ? "GPS"
+              ? rec.gpsError
               : rec.gpsAccuracy
-                ? `±${Math.round(rec.gpsAccuracy)} m`
-                : "Buscando"}
+                ? `GPS ±${Math.round(rec.gpsAccuracy)} m`
+                : "Procurando sinal…"}
           </span>
-        </div>
-
-        {rec.state === "idle" && (
-          <div className="app-scroll mt-4 flex gap-2 overflow-x-auto pb-1">
-            {DISCIPLINES.map((d) => (
-              <button
-                key={d.id}
-                type="button"
-                onClick={() => rec.setSport(d.id as Discipline)}
-                className={cn(
-                  "shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold",
-                  rec.sport === d.id
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border bg-surface-2/80 text-muted-foreground",
-                )}
-              >
-                {d.label}
-              </button>
-            ))}
-          </div>
-        )}
-
-        <div className="flex flex-1 flex-col items-center justify-center gap-1">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">
-            Distância
-          </p>
-          <p className="flex items-baseline gap-2">
-            <span className="metric-value text-7xl text-primary">
-              {formatKm(rec.stats.distanceM, 2)}
-            </span>
-            <span className="text-lg text-muted-foreground">km</span>
-          </p>
-          <div className="mt-6 grid w-full grid-cols-3 gap-3 text-center">
-            <Live label="Tempo" value={formatDuration(rec.elapsedS)} />
-            <Live label="Vel." value={formatSpeed(rec.currentSpeedKmh)} unit="km/h" />
-            <Live label="Altitude" value={altitude !== null ? String(altitude) : "—"} unit="m" />
-          </div>
-          {rec.gpsError && <p className="mt-4 text-xs text-destructive">{rec.gpsError}</p>}
-        </div>
-
-        <div className="flex items-center justify-center gap-4">
           {rec.state === "idle" && (
-            <Button variant="action" size="hero" className="w-full" onClick={rec.start}>
-              <Play className="h-5 w-5" /> Iniciar
-            </Button>
-          )}
-          {rec.state === "recording" && (
-            <>
-              <Button variant="surface" size="hero" className="flex-1" onClick={rec.pause}>
-                <Pause className="h-5 w-5" /> Pausar
-              </Button>
-              <Button variant="action" size="hero" className="flex-1" onClick={rec.finish}>
-                <Square className="h-5 w-5" /> Finalizar
-              </Button>
-            </>
-          )}
-          {rec.state === "paused" && (
-            <>
-              <Button variant="action" size="hero" className="flex-1" onClick={rec.resume}>
-                <Play className="h-5 w-5" /> Retomar
-              </Button>
-              <Button variant="surface" size="hero" className="flex-1" onClick={rec.finish}>
-                <Square className="h-5 w-5" /> Finalizar
-              </Button>
-            </>
+            <select
+              value={rec.sport}
+              onChange={(e) => rec.setSport(e.target.value as Discipline)}
+              className="rounded-lg border border-border bg-surface-2 px-2 py-1.5 text-xs"
+              aria-label="Modalidade"
+            >
+              {DISCIPLINES.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.label}
+                </option>
+              ))}
+            </select>
           )}
         </div>
+
+        <div className="grid grid-cols-3 gap-2">
+          <Metric label="Distância" value={formatKm(rec.stats.distanceM)} unit="km" accent />
+          <Metric label="Tempo" value={formatDuration(rec.elapsedS)} />
+          <Metric label="Vel." value={formatSpeed(rec.currentSpeedKmh)} unit="km/h" />
+        </div>
+      </div>
+
+      <div className="absolute inset-x-0 bottom-4 flex items-center justify-center gap-4 px-6">
+        {rec.state === "idle" && (
+          <Button variant="action" size="hero" className="w-full" onClick={rec.start}>
+            Iniciar gravação
+          </Button>
+        )}
+        {rec.state === "recording" && (
+          <>
+            <Button variant="surface" size="hero" className="flex-1" onClick={rec.pause}>
+              <Pause className="h-5 w-5" /> Pausar
+            </Button>
+            <Button variant="action" size="hero" className="flex-1" onClick={rec.finish}>
+              <Square className="h-5 w-5" /> Finalizar
+            </Button>
+          </>
+        )}
+        {rec.state === "paused" && (
+          <>
+            <Button variant="action" size="hero" className="flex-1" onClick={rec.resume}>
+              <Play className="h-5 w-5" /> Retomar
+            </Button>
+            <Button variant="surface" size="hero" className="flex-1" onClick={rec.finish}>
+              <Square className="h-5 w-5" /> Finalizar
+            </Button>
+          </>
+        )}
       </div>
     </div>
   );
 }
 
-function Live({ label, value, unit }: { label: string; value: string; unit?: string }) {
-  return (
-    <div className="rounded-2xl border border-border/60 bg-surface-1/70 py-3 backdrop-blur">
-      <p className="metric-value text-xl">
-        {value}
-        {unit && <span className="ml-1 text-[11px] text-muted-foreground">{unit}</span>}
-      </p>
-      <p className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</p>
-    </div>
-  );
-}
-
-function Big({
+function Metric({
   label,
   value,
   unit,
@@ -308,13 +254,13 @@ function Big({
   accent?: boolean;
 }) {
   return (
-    <div className="surface-card px-3 py-3">
+    <div className="surface-card px-3 py-2 text-center">
       <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
         {label}
       </p>
-      <p className="mt-1 flex items-baseline gap-1">
-        <span className={cn("metric-value text-2xl", accent && "text-primary")}>{value}</span>
-        {unit && <span className="text-xs text-muted-foreground">{unit}</span>}
+      <p className={cn("metric-value text-xl", accent && "text-primary")}>
+        {value}
+        {unit && <span className="ml-1 text-[11px] text-muted-foreground">{unit}</span>}
       </p>
     </div>
   );

@@ -1,188 +1,133 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { CircleDot, Gauge, MapPin, Mountain, Timer } from "lucide-react";
-import { Screen, SectionTitle, StatTile, EmptyState } from "@/components/trako/Screen";
-import { TrakoLogo } from "@/components/trako/Brand";
+import { CircleDot, Mountain, Timer, Route as RouteIcon } from "lucide-react";
+import { Screen, StatTile, EmptyState, SectionTitle } from "@/components/trako/Screen";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import { useGeolocation } from "@/hooks/useGeolocation";
 import { listMyActivities, getProfile } from "@/services/activities";
 import { computeStats } from "@/lib/achievements";
-import { formatDistance, formatHours, formatNumber, formatRelative, formatKm } from "@/lib/format";
-import { reverseGeocode } from "@/lib/geo";
-import { useEffect, useState } from "react";
+import { formatKm, formatHours, formatNumber, formatRelative, formatDuration } from "@/lib/format";
+import { DISCIPLINES } from "@/types/trako";
 import type { Activity } from "@/types/trako";
 
 export const Route = createFileRoute("/_authenticated/home")({
   head: () => ({
     meta: [
       { title: "Início — TRAKO" },
-      { name: "description", content: "Seu resumo de piloto: distância, tempo e últimas trilhas." },
+      { name: "description", content: "Resumo das suas trilhas, distância, tempo e elevação." },
       { property: "og:title", content: "Início — TRAKO" },
-      { property: "og:description", content: "Resumo do piloto e últimas trilhas gravadas." },
+      { property: "og:description", content: "Seu painel de piloto no TRAKO." },
     ],
   }),
   component: Home,
 });
 
+export function disciplineLabel(id: string) {
+  return DISCIPLINES.find((d) => d.id === id)?.label ?? "Trilha";
+}
+
 function Home() {
   const { user } = useAuth();
   const uid = user?.id ?? "";
-  const { fix, status } = useGeolocation({ auto: true });
-  const [place, setPlace] = useState<string | null>(null);
 
-  const activities = useQuery({
-    queryKey: ["my-activities", uid],
+  const { data: activities = [], isLoading } = useQuery({
+    queryKey: ["activities", uid],
     queryFn: () => listMyActivities(uid),
     enabled: !!uid,
   });
-  const profile = useQuery({
+  const { data: profile } = useQuery({
     queryKey: ["profile", uid],
     queryFn: () => getProfile(uid),
     enabled: !!uid,
   });
 
-  useEffect(() => {
-    if (!fix) return;
-    let alive = true;
-    reverseGeocode(fix.lat, fix.lng).then((p) => alive && setPlace(p));
-    return () => {
-      alive = false;
-    };
-  }, [fix]);
-
-  const list = activities.data ?? [];
-  const stats = computeStats(list);
-  const dist = formatDistance(stats.distanceM);
-  const name = profile.data?.display_name ?? "piloto";
+  const stats = computeStats(activities);
+  const name = profile?.display_name || profile?.username || "piloto";
 
   return (
-    <Screen padded={false} className="pb-4">
-      <header className="sticky top-0 z-20 flex items-center justify-between border-b border-border/60 bg-background/90 px-4 pb-3 pt-[calc(env(safe-area-inset-top,0px)+0.9rem)] backdrop-blur">
-        <TrakoLogo size="sm" />
-        <span className="flex items-center gap-1 text-xs text-muted-foreground">
-          <MapPin className="h-3.5 w-3.5 text-primary" />
-          {place ??
-            (status === "denied"
-              ? "Localização desligada"
-              : status === "granted"
-                ? "Localizando…"
-                : "Sem GPS")}
-        </span>
-      </header>
+    <Screen title={`E aí, ${name}`} subtitle="Your ride. Your trail.">
+      <div className="grid grid-cols-2 gap-3">
+        <StatTile label="Distância" value={formatKm(stats.distanceM)} unit="km" accent />
+        <StatTile label="Tempo" value={formatHours(stats.durationS)} unit="h" />
+        <StatTile label="Elevação" value={formatNumber(stats.elevationM)} unit="m" />
+        <StatTile label="Trilhas" value={String(stats.activities)} />
+      </div>
 
-      <div className="space-y-4 px-4 py-4">
+      <div className="surface-card flex items-center justify-between gap-3 px-4 py-4">
         <div>
-          <p className="text-sm text-muted-foreground">Bora pra trilha,</p>
-          <h1 className="font-display text-2xl font-bold">{name}</h1>
+          <p className="font-display text-sm font-bold">Nível {stats.level}</p>
+          <p className="text-xs text-muted-foreground">{formatNumber(stats.xp)} XP acumulado</p>
         </div>
-
-        <div className="surface-card relative overflow-hidden px-4 py-5">
-          <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-primary/10 blur-2xl" />
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-            Distância total
-          </p>
-          <p className="mt-1 flex items-baseline gap-2">
-            <span className="metric-value text-5xl text-primary">{dist.value}</span>
-            <span className="text-sm text-muted-foreground">{dist.unit}</span>
-          </p>
-          <div className="mt-4 grid grid-cols-3 gap-3 text-center">
-            <MiniStat label="Trilhas" value={formatNumber(stats.activities)} />
-            <MiniStat label="Horas" value={formatHours(stats.durationS)} />
-            <MiniStat label="Nível" value={String(stats.level)} />
-          </div>
-        </div>
-
-        <Button asChild variant="action" size="hero" className="w-full">
+        <Button asChild variant="action" size="tap">
           <Link to="/record">
-            <CircleDot className="h-5 w-5" /> Gravar trilha
+            <CircleDot className="h-5 w-5" /> Gravar
           </Link>
         </Button>
-
-        <div className="grid grid-cols-3 gap-3">
-          <StatTile label="Elevação" value={formatNumber(stats.elevationM)} unit="m" />
-          <StatTile
-            label="Vel. máx"
-            value={stats.maxSpeedKmh.toFixed(0)}
-            unit="km/h"
-          />
-          <StatTile label="Atividades" value={formatNumber(stats.activities)} />
-        </div>
-
-        <SectionTitle
-          action={
-            <Link to="/activities" className="text-xs font-semibold text-primary">
-              Ver todas
-            </Link>
-          }
-        >
-          Últimas trilhas
-        </SectionTitle>
-
-        {activities.isLoading ? (
-          <div className="h-24 animate-pulse rounded-xl bg-surface-2" />
-        ) : list.length === 0 ? (
-          <EmptyState
-            icon={<Mountain className="h-8 w-8" />}
-            title="Nenhuma trilha ainda"
-            description="Tudo começa em zero. Grave sua primeira trilha e veja seus números crescerem."
-            action={
-              <Button asChild variant="action" size="tap">
-                <Link to="/record">Começar agora</Link>
-              </Button>
-            }
-          />
-        ) : (
-          <ul className="space-y-3">
-            {list.slice(0, 5).map((a) => (
-              <ActivityRow key={a.id} activity={a} />
-            ))}
-          </ul>
-        )}
       </div>
+
+      <SectionTitle
+        action={
+          activities.length > 0 && (
+            <Link to="/activities" className="text-xs text-primary">
+              Ver tudo
+            </Link>
+          )
+        }
+      >
+        Últimas trilhas
+      </SectionTitle>
+
+      {isLoading ? (
+        <div className="surface-card h-24 animate-pulse" />
+      ) : activities.length === 0 ? (
+        <EmptyState
+          icon={<RouteIcon className="h-8 w-8" />}
+          title="Nenhuma trilha ainda"
+          description="Sua primeira gravação começa aqui. Distância, tempo e traçado ficam salvos no seu perfil."
+          action={
+            <Button asChild variant="action" size="tap">
+              <Link to="/record">Gravar primeira trilha</Link>
+            </Button>
+          }
+        />
+      ) : (
+        <ul className="space-y-3">
+          {activities.slice(0, 5).map((a) => (
+            <ActivityRow key={a.id} activity={a} />
+          ))}
+        </ul>
+      )}
     </Screen>
   );
 }
 
-function MiniStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl bg-surface-2 py-2">
-      <p className="metric-value text-lg">{value}</p>
-      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
-    </div>
-  );
-}
-
-export function ActivityRow({ activity }: { activity: Activity }) {
+export function ActivityRow({ activity: a }: { activity: Activity }) {
   return (
     <li>
       <Link
         to="/activities/$id"
-        params={{ id: activity.id }}
-        className="surface-card flex items-center gap-3 px-3 py-3 active:scale-[0.99]"
+        params={{ id: a.id }}
+        className="surface-card block px-4 py-3 active:scale-[0.99]"
       >
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-          <Mountain className="h-5 w-5" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-display text-sm font-bold">{activity.title}</p>
-          <p className="truncate text-xs text-muted-foreground">
-            {activity.place_label ? `${activity.place_label} · ` : ""}
-            {formatRelative(activity.started_at)}
-          </p>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="truncate font-display text-sm font-bold">{a.title}</p>
+            <p className="truncate text-[11px] text-muted-foreground">
+              {disciplineLabel(a.sport)}
+              {a.place_label ? ` · ${a.place_label}` : ""} · {formatRelative(a.started_at)}
+            </p>
+          </div>
         </div>
-        <div className="text-right">
-          <p className="metric-value text-base text-primary">{formatKm(activity.distance_m)} km</p>
-          <p className="flex items-center justify-end gap-2 text-[11px] text-muted-foreground">
-            <span className="inline-flex items-center gap-0.5">
-              <Timer className="h-3 w-3" />
-              {Math.round(activity.duration_s / 60)}min
-            </span>
-            <span className="inline-flex items-center gap-0.5">
-              <Gauge className="h-3 w-3" />
-              {activity.avg_speed_kmh.toFixed(0)}
-            </span>
-          </p>
+        <div className="mt-3 flex gap-4 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1">
+            <RouteIcon className="h-3.5 w-3.5" /> {formatKm(a.distance_m)} km
+          </span>
+          <span className="flex items-center gap-1">
+            <Timer className="h-3.5 w-3.5" /> {formatDuration(a.duration_s)}
+          </span>
+          <span className="flex items-center gap-1">
+            <Mountain className="h-3.5 w-3.5" /> {formatNumber(a.elevation_gain_m)} m
+          </span>
         </div>
       </Link>
     </li>
