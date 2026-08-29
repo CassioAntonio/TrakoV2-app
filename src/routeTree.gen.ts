@@ -16,6 +16,7 @@ import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as AuthenticatedExploreRouteImport } from './routes/_authenticated/explore'
 import { Route as AuthenticatedHomeRouteImport } from './routes/_authenticated/home'
 import { Route as AuthenticatedRecordRouteImport } from './routes/_authenticated/record'
+import { Route as AuthenticatedActivitiesIndexRouteImport } from './routes/_authenticated/activities/index'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -51,6 +52,12 @@ const AuthenticatedRecordRoute = AuthenticatedRecordRouteImport.update({
   path: '/record',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedActivitiesIndexRoute =
+  AuthenticatedActivitiesIndexRouteImport.update({
+    id: '/activities/',
+    path: '/activities/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -59,6 +66,7 @@ export interface FileRoutesByFullPath {
   '/explore': typeof AuthenticatedExploreRoute
   '/home': typeof AuthenticatedHomeRoute
   '/record': typeof AuthenticatedRecordRoute
+  '/activities/': typeof AuthenticatedActivitiesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -67,6 +75,7 @@ export interface FileRoutesByTo {
   '/explore': typeof AuthenticatedExploreRoute
   '/home': typeof AuthenticatedHomeRoute
   '/record': typeof AuthenticatedRecordRoute
+  '/activities': typeof AuthenticatedActivitiesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -77,12 +86,27 @@ export interface FileRoutesById {
   '/_authenticated/explore': typeof AuthenticatedExploreRoute
   '/_authenticated/home': typeof AuthenticatedHomeRoute
   '/_authenticated/record': typeof AuthenticatedRecordRoute
+  '/_authenticated/activities/': typeof AuthenticatedActivitiesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/welcome' | '/explore' | '/home' | '/record'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/welcome'
+    | '/explore'
+    | '/home'
+    | '/record'
+    | '/activities/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/welcome' | '/explore' | '/home' | '/record'
+  to:
+    | '/'
+    | '/auth'
+    | '/welcome'
+    | '/explore'
+    | '/home'
+    | '/record'
+    | '/activities'
   id:
     | '__root__'
     | '/'
@@ -92,6 +116,7 @@ export interface FileRouteTypes {
     | '/_authenticated/explore'
     | '/_authenticated/home'
     | '/_authenticated/record'
+    | '/_authenticated/activities/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -152,6 +177,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRecordRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/activities/': {
+      id: '/_authenticated/activities/'
+      path: '/activities'
+      fullPath: '/activities/'
+      preLoaderRoute: typeof AuthenticatedActivitiesIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
   }
 }
 
@@ -159,12 +191,14 @@ interface AuthenticatedRouteChildren {
   AuthenticatedExploreRoute: typeof AuthenticatedExploreRoute
   AuthenticatedHomeRoute: typeof AuthenticatedHomeRoute
   AuthenticatedRecordRoute: typeof AuthenticatedRecordRoute
+  AuthenticatedActivitiesIndexRoute: typeof AuthenticatedActivitiesIndexRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedExploreRoute: AuthenticatedExploreRoute,
   AuthenticatedHomeRoute: AuthenticatedHomeRoute,
   AuthenticatedRecordRoute: AuthenticatedRecordRoute,
+  AuthenticatedActivitiesIndexRoute: AuthenticatedActivitiesIndexRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
