@@ -28,26 +28,44 @@ interface Props {
   className?: string;
 }
 
+/**
+ * OpenStreetMap standard raster tiles — no API key, no token, no usage plan.
+ * Darkened at render time (raster paint props) so it matches the TRAKO theme
+ * without depending on a hosted dark style.
+ */
 const STYLE: maplibregl.StyleSpecification = {
   version: 8,
   sources: {
-    basemap: {
+    osm: {
       type: "raster",
       tiles: [
-        "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
-        "https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
-        "https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
+        "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+        "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        "https://b.tile.openstreetmap.org/{z}/{x}/{y}.png",
       ],
       tileSize: 256,
       maxzoom: 19,
-      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, © CARTO',
+      attribution:
+        '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     },
   },
   layers: [
     { id: "bg", type: "background", paint: { "background-color": "#12181a" } },
-    { id: "basemap", type: "raster", source: "basemap" },
+    {
+      id: "osm",
+      type: "raster",
+      source: "osm",
+      paint: {
+        "raster-opacity": 0.92,
+        "raster-brightness-min": 0.05,
+        "raster-brightness-max": 0.72,
+        "raster-saturation": -0.35,
+        "raster-contrast": 0.12,
+      },
+    },
   ],
 };
+
 
 function lineFeature(points: TrackPoint[]): Feature<LineString> {
   return {
@@ -121,7 +139,19 @@ export default function RideMap({
 
     if (interactive) {
       map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+      map.addControl(
+        new maplibregl.GeolocateControl({
+          positionOptions: { enableHighAccuracy: true },
+          trackUserLocation: true,
+          showAccuracyCircle: true,
+        }),
+        "top-right",
+      );
+      map.touchZoomRotate.enable();
+      map.dragPan.enable();
+      map.scrollZoom.enable();
     }
+
 
     const ro = new ResizeObserver(() => map.resize());
     ro.observe(containerRef.current);
