@@ -139,7 +139,19 @@ export default function RideMap({
 
     if (interactive) {
       map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+      map.addControl(
+        new maplibregl.GeolocateControl({
+          positionOptions: { enableHighAccuracy: true },
+          trackUserLocation: true,
+          showAccuracyCircle: true,
+        }),
+        "top-right",
+      );
+      map.touchZoomRotate.enable();
+      map.dragPan.enable();
+      map.scrollZoom.enable();
     }
+
 
     const ro = new ResizeObserver(() => map.resize());
     ro.observe(containerRef.current);
