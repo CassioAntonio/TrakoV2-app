@@ -40,7 +40,7 @@ function ResetPassword() {
       if (data.session) setReady(true);
       else {
         toast.error("Link de recuperação inválido ou expirado.");
-        navigate({ to: "/auth", replace: true });
+        navigate({ to: "/auth", search: { mode: "signin" }, replace: true });
       }
     });
   }, [navigate]);
