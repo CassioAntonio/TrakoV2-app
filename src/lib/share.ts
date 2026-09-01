@@ -1,6 +1,6 @@
 import type { Activity } from "@/types/trako";
 import { BRANDING, bodyFont, displayFont } from "@/lib/branding";
-import { formatKm, formatDuration, formatNumber, formatDate } from "@/lib/format";
+import { formatKm, formatDuration, formatNumber, formatDateTime } from "@/lib/format";
 
 const W = 1080;
 const H = 1920;
@@ -113,7 +113,7 @@ export async function renderStoryCard(activity: Activity, rider: ShareRider): Pr
   ctx.fillStyle = BRANDING.colors.muted;
   ctx.font = bodyFont(30);
   ctx.fillText(
-    `${formatDate(activity.started_at)}${activity.place_label ? ` · ${activity.place_label}` : ""}`,
+    `${formatDateTime(activity.started_at)}${activity.place_label ? ` · ${activity.place_label}` : ""}`,
     80,
     386,
   );
