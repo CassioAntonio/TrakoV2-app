@@ -76,10 +76,6 @@ function ProfileScreen() {
           </li>
         ))}
       </ul>
-
-      <Button variant="surface" size="tap" className="w-full" onClick={signOut}>
-        <LogOut className="h-4 w-4" /> Sair
-      </Button>
     </Screen>
   );
 }
