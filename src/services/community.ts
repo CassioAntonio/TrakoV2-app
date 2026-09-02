@@ -1,53 +1,49 @@
-import { supabase } from "@/integrations/supabase/client";
 import type { Profile } from "@/types/trako";
+import { newId, readTable, writeTable } from "@/lib/local-store";
+
+/**
+ * Local-only community layer (backend temporarily removed). Same API surface
+ * as before; storage starts empty.
+ */
+
+const FOLLOWS = "follows";
+const COMMENTS = "comments";
+const PROFILES = "profiles";
+const AVATARS = "avatars";
+
+interface Follow {
+  follower_id: string;
+  following_id: string;
+}
 
 /* ------------------------------ follows ------------------------------ */
 
 export async function isFollowing(followerId: string, followingId: string): Promise<boolean> {
-  const { data, error } = await supabase
-    .from("follows")
-    .select("follower_id")
-    .eq("follower_id", followerId)
-    .eq("following_id", followingId)
-    .maybeSingle();
-  if (error) throw error;
-  return !!data;
+  return readTable<Follow>(FOLLOWS).some(
+    (f) => f.follower_id === followerId && f.following_id === followingId,
+  );
 }
 
 export async function setFollow(followerId: string, followingId: string, on: boolean) {
-  if (on) {
-    const { error } = await supabase
-      .from("follows")
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .insert({ follower_id: followerId, following_id: followingId } as any);
-    if (error) throw error;
-  } else {
-    const { error } = await supabase
-      .from("follows")
-      .delete()
-      .eq("follower_id", followerId)
-      .eq("following_id", followingId);
-    if (error) throw error;
-  }
+  const rows = readTable<Follow>(FOLLOWS).filter(
+    (f) => !(f.follower_id === followerId && f.following_id === followingId),
+  );
+  if (on) rows.push({ follower_id: followerId, following_id: followingId });
+  writeTable(FOLLOWS, rows);
 }
 
 export async function getFollowCounts(userId: string) {
-  const [followers, following] = await Promise.all([
-    supabase.from("follows").select("*", { count: "exact", head: true }).eq("following_id", userId),
-    supabase.from("follows").select("*", { count: "exact", head: true }).eq("follower_id", userId),
-  ]);
-  if (followers.error) throw followers.error;
-  if (following.error) throw following.error;
-  return { followers: followers.count ?? 0, following: following.count ?? 0 };
+  const rows = readTable<Follow>(FOLLOWS);
+  return {
+    followers: rows.filter((f) => f.following_id === userId).length,
+    following: rows.filter((f) => f.follower_id === userId).length,
+  };
 }
 
 export async function listFollowingIds(userId: string): Promise<string[]> {
-  const { data, error } = await supabase
-    .from("follows")
-    .select("following_id")
-    .eq("follower_id", userId);
-  if (error) throw error;
-  return (data ?? []).map((r) => (r as { following_id: string }).following_id);
+  return readTable<Follow>(FOLLOWS)
+    .filter((f) => f.follower_id === userId)
+    .map((f) => f.following_id);
 }
 
 /* ------------------------------ comments ------------------------------ */
@@ -61,65 +57,69 @@ export interface ActivityComment {
 }
 
 export async function listComments(activityId: string): Promise<ActivityComment[]> {
-  const { data, error } = await supabase
-    .from("activity_comments")
-    .select("id,activity_id,user_id,body,created_at")
-    .eq("activity_id", activityId)
-    .order("created_at", { ascending: true });
-  if (error) throw error;
-  return (data ?? []) as ActivityComment[];
+  return readTable<ActivityComment>(COMMENTS)
+    .filter((c) => c.activity_id === activityId)
+    .sort((a, b) => a.created_at.localeCompare(b.created_at));
 }
 
 export async function addComment(activityId: string, userId: string, body: string) {
-  const { error } = await supabase
-    .from("activity_comments")
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .insert({ activity_id: activityId, user_id: userId, body } as any);
-  if (error) throw error;
+  const rows = readTable<ActivityComment>(COMMENTS);
+  rows.push({
+    id: newId(),
+    activity_id: activityId,
+    user_id: userId,
+    body,
+    created_at: new Date().toISOString(),
+  });
+  writeTable(COMMENTS, rows);
 }
 
 export async function deleteComment(id: string) {
-  const { error } = await supabase.from("activity_comments").delete().eq("id", id);
-  if (error) throw error;
+  writeTable(
+    COMMENTS,
+    readTable<ActivityComment>(COMMENTS).filter((c) => c.id !== id),
+  );
 }
 
 /* ------------------------------ riders ------------------------------ */
 
 export async function searchRiders(term: string): Promise<Profile[]> {
-  const q = term.trim();
+  const q = term.trim().toLowerCase();
   if (!q) return [];
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("id,username,display_name,bio,bike,disciplines,avatar_url,is_private")
-    .or(`username.ilike.%${q}%,display_name.ilike.%${q}%`)
-    .limit(20);
-  if (error) throw error;
-  return (data ?? []) as Profile[];
+  return readTable<Profile>(PROFILES)
+    .filter(
+      (p) =>
+        (p.username ?? "").toLowerCase().includes(q) ||
+        (p.display_name ?? "").toLowerCase().includes(q),
+    )
+    .slice(0, 20);
 }
 
 /* ------------------------------ avatars ------------------------------ */
 
-/** Uploads to the private `avatars` bucket under `<uid>/…` and returns the object path. */
+interface StoredAvatar {
+  path: string;
+  data: string;
+}
+
+/** Stores the picked image locally as a data URL and returns its local path. */
 export async function uploadAvatar(userId: string, file: File): Promise<string> {
-  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-  const path = `${userId}/${Date.now()}.${ext}`;
-  const { error } = await supabase.storage
-    .from("avatars")
-    .upload(path, file, { upsert: true, contentType: file.type || "image/jpeg" });
-  if (error) throw error;
+  const path = `${userId}/${Date.now()}`;
+  const data = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+  const rows = readTable<StoredAvatar>(AVATARS).filter((a) => !a.path.startsWith(`${userId}/`));
+  rows.push({ path, data });
+  writeTable(AVATARS, rows);
   return path;
 }
 
-const signedCache = new Map<string, { url: string; exp: number }>();
-
-/** Signed URL for a stored avatar path (the bucket is private). */
+/** Resolves a stored avatar path to a displayable URL. */
 export async function avatarUrl(path: string | null | undefined): Promise<string | null> {
   if (!path) return null;
-  if (path.startsWith("http")) return path;
-  const hit = signedCache.get(path);
-  if (hit && hit.exp > Date.now()) return hit.url;
-  const { data, error } = await supabase.storage.from("avatars").createSignedUrl(path, 3600);
-  if (error || !data?.signedUrl) return null;
-  signedCache.set(path, { url: data.signedUrl, exp: Date.now() + 50 * 60 * 1000 });
-  return data.signedUrl;
+  if (path.startsWith("http") || path.startsWith("data:")) return path;
+  return readTable<StoredAvatar>(AVATARS).find((a) => a.path === path)?.data ?? null;
 }

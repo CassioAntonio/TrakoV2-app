@@ -1,45 +1,42 @@
-import { supabase } from "@/integrations/supabase/client";
 import type { Activity, Profile, TrackPoint, Visibility, Discipline } from "@/types/trako";
+import { newId, readTable, writeTable } from "@/lib/local-store";
 
-const ACTIVITY_COLUMNS =
-  "id,user_id,title,notes,sport,visibility,distance_m,duration_s,moving_time_s,avg_speed_kmh,max_speed_kmh,elevation_gain_m,min_altitude_m,max_altitude_m,started_at,ended_at,start_lat,start_lng,place_label,track,created_at";
+/**
+ * Local-only data layer (backend temporarily removed). Same API surface as
+ * before so screens are untouched. Storage starts empty.
+ */
 
-function normalize(row: Record<string, unknown>): Activity {
-  return {
-    ...(row as unknown as Activity),
-    track: Array.isArray(row["track"]) ? (row["track"] as TrackPoint[]) : [],
-  };
+const ACTIVITIES = "activities";
+const PROFILES = "profiles";
+const FAVORITES = "favorites";
+const LIKES = "likes";
+
+function allActivities(): Activity[] {
+  return readTable<Activity>(ACTIVITIES).map((a) => ({
+    ...a,
+    track: Array.isArray(a.track) ? (a.track as TrackPoint[]) : [],
+  }));
+}
+
+function byStartedDesc(a: Activity, b: Activity) {
+  return (b.started_at ?? "").localeCompare(a.started_at ?? "");
 }
 
 export async function listMyActivities(userId: string): Promise<Activity[]> {
-  const { data, error } = await supabase
-    .from("activities")
-    .select(ACTIVITY_COLUMNS)
-    .eq("user_id", userId)
-    .order("started_at", { ascending: false });
-  if (error) throw error;
-  return (data ?? []).map((r) => normalize(r as Record<string, unknown>));
+  return allActivities()
+    .filter((a) => a.user_id === userId)
+    .sort(byStartedDesc);
 }
 
 export async function getActivity(id: string): Promise<Activity | null> {
-  const { data, error } = await supabase
-    .from("activities")
-    .select(ACTIVITY_COLUMNS)
-    .eq("id", id)
-    .maybeSingle();
-  if (error) throw error;
-  return data ? normalize(data as Record<string, unknown>) : null;
+  return allActivities().find((a) => a.id === id) ?? null;
 }
 
 export async function listPublicActivities(limit = 50): Promise<Activity[]> {
-  const { data, error } = await supabase
-    .from("activities")
-    .select(ACTIVITY_COLUMNS)
-    .eq("visibility", "public")
-    .order("started_at", { ascending: false })
-    .limit(limit);
-  if (error) throw error;
-  return (data ?? []).map((r) => normalize(r as Record<string, unknown>));
+  return allActivities()
+    .filter((a) => a.visibility === "public")
+    .sort(byStartedDesc)
+    .slice(0, limit);
 }
 
 export interface NewActivityInput {
@@ -65,106 +62,74 @@ export interface NewActivityInput {
 }
 
 export async function createActivity(input: NewActivityInput): Promise<Activity> {
-  const { data, error } = await supabase
-    .from("activities")
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .insert(input as any)
-    .select(ACTIVITY_COLUMNS)
-    .single();
-  if (error) throw error;
-  return normalize(data as Record<string, unknown>);
+  const row = {
+    ...input,
+    id: newId(),
+    created_at: new Date().toISOString(),
+  } as unknown as Activity;
+  writeTable(ACTIVITIES, [row, ...readTable<Activity>(ACTIVITIES)]);
+  return row;
 }
 
 export async function deleteActivity(id: string) {
-  const { error } = await supabase.from("activities").delete().eq("id", id);
-  if (error) throw error;
+  writeTable(
+    ACTIVITIES,
+    readTable<Activity>(ACTIVITIES).filter((a) => a.id !== id),
+  );
 }
 
 export async function updateActivity(id: string, patch: Record<string, unknown>) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await supabase.from("activities").update(patch as any).eq("id", id);
-  if (error) throw error;
+  writeTable(
+    ACTIVITIES,
+    readTable<Activity>(ACTIVITIES).map((a) => (a.id === id ? { ...a, ...patch } : a)),
+  );
 }
 
 export async function getProfile(userId: string): Promise<Profile | null> {
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("id,username,display_name,bio,bike,disciplines,avatar_url,is_private")
-    .eq("id", userId)
-    .maybeSingle();
-  if (error) throw error;
-  return (data as Profile | null) ?? null;
+  return readTable<Profile>(PROFILES).find((p) => p.id === userId) ?? null;
 }
 
 export async function upsertProfile(profile: Partial<Profile> & { id: string }) {
-  const { error } = await supabase
-    .from("profiles")
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .upsert(profile as any);
-  if (error) throw error;
+  const rows = readTable<Profile>(PROFILES);
+  const idx = rows.findIndex((p) => p.id === profile.id);
+  if (idx >= 0) rows[idx] = { ...rows[idx], ...profile } as Profile;
+  else rows.push(profile as Profile);
+  writeTable(PROFILES, rows);
 }
 
 export async function getProfilesByIds(ids: string[]): Promise<Record<string, Profile>> {
-  if (ids.length === 0) return {};
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("id,username,display_name,bio,bike,disciplines,avatar_url,is_private")
-    .in("id", ids);
-  if (error) throw error;
   const map: Record<string, Profile> = {};
-  for (const p of (data ?? []) as Profile[]) map[p.id] = p;
+  for (const p of readTable<Profile>(PROFILES)) if (ids.includes(p.id)) map[p.id] = p;
   return map;
 }
 
+interface Pair {
+  user_id: string;
+  activity_id: string;
+}
+
+function togglePair(table: string, userId: string, activityId: string, on: boolean) {
+  const rows = readTable<Pair>(table).filter(
+    (r) => !(r.user_id === userId && r.activity_id === activityId),
+  );
+  if (on) rows.push({ user_id: userId, activity_id: activityId });
+  writeTable(table, rows);
+}
+
 export async function toggleFavorite(userId: string, activityId: string, on: boolean) {
-  if (on) {
-    const { error } = await supabase
-      .from("favorites")
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .insert({ user_id: userId, activity_id: activityId } as any);
-    if (error) throw error;
-  } else {
-    const { error } = await supabase
-      .from("favorites")
-      .delete()
-      .eq("user_id", userId)
-      .eq("activity_id", activityId);
-    if (error) throw error;
-  }
+  togglePair(FAVORITES, userId, activityId, on);
 }
 
 export async function listFavorites(userId: string): Promise<string[]> {
-  const { data, error } = await supabase
-    .from("favorites")
-    .select("activity_id")
-    .eq("user_id", userId);
-  if (error) throw error;
-  return (data ?? []).map((r) => (r as { activity_id: string }).activity_id);
+  return readTable<Pair>(FAVORITES)
+    .filter((r) => r.user_id === userId)
+    .map((r) => r.activity_id);
 }
 
 export async function toggleLike(userId: string, activityId: string, on: boolean) {
-  if (on) {
-    const { error } = await supabase
-      .from("activity_likes")
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .insert({ user_id: userId, activity_id: activityId } as any);
-    if (error) throw error;
-  } else {
-    const { error } = await supabase
-      .from("activity_likes")
-      .delete()
-      .eq("user_id", userId)
-      .eq("activity_id", activityId);
-    if (error) throw error;
-  }
+  togglePair(LIKES, userId, activityId, on);
 }
 
 export async function listLikes(activityIds: string[]) {
-  if (activityIds.length === 0) return [] as { activity_id: string; user_id: string }[];
-  const { data, error } = await supabase
-    .from("activity_likes")
-    .select("activity_id,user_id")
-    .in("activity_id", activityIds);
-  if (error) throw error;
-  return (data ?? []) as { activity_id: string; user_id: string }[];
+  return readTable<Pair>(LIKES).filter((r) => activityIds.includes(r.activity_id));
 }
