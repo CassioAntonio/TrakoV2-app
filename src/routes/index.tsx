@@ -1,6 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { TrakoMark } from "@/components/trako/Brand";
 
 export const Route = createFileRoute("/")({
@@ -30,14 +29,7 @@ function Splash() {
 
   useEffect(() => {
     const slowTimer = window.setTimeout(() => setSlow(true), 2500);
-    let done = false;
-    const go = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (done) return;
-      done = true;
-      navigate({ to: data.session ? "/home" : "/welcome", replace: true });
-    };
-    const t = window.setTimeout(() => void go(), 900);
+    const t = window.setTimeout(() => navigate({ to: "/home", replace: true }), 900);
     return () => {
       window.clearTimeout(t);
       window.clearTimeout(slowTimer);
