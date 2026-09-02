@@ -2,7 +2,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Trophy } from "lucide-react";
 import { Screen, StatTile, SectionTitle } from "@/components/trako/Screen";
-import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { listMyActivities, getProfile } from "@/services/activities";
 import { computeStats, computeAchievements } from "@/lib/achievements";
