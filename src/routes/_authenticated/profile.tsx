@@ -1,10 +1,9 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { LogOut, Trophy } from "lucide-react";
+import { Trophy } from "lucide-react";
 import { Screen, StatTile, SectionTitle } from "@/components/trako/Screen";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
 import { listMyActivities, getProfile } from "@/services/activities";
 import { computeStats, computeAchievements } from "@/lib/achievements";
 import { formatKm, formatHours, formatNumber, formatSpeed } from "@/lib/format";
@@ -23,7 +22,6 @@ export const Route = createFileRoute("/_authenticated/profile")({
 
 function ProfileScreen() {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const uid = user?.id ?? "";
 
   const { data: activities = [] } = useQuery({
@@ -40,11 +38,6 @@ function ProfileScreen() {
   const stats = computeStats(activities);
   const achievements = computeAchievements(activities, stats);
   const name = profile?.display_name || profile?.username || "Piloto";
-
-  async function signOut() {
-    await supabase.auth.signOut();
-    navigate({ to: "/welcome" });
-  }
 
   return (
     <Screen title={name} subtitle={user?.email ?? ""}>
