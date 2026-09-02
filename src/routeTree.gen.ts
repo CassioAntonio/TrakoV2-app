@@ -21,6 +21,7 @@ import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedRecordRouteImport } from './routes/_authenticated/record'
 import { Route as AuthenticatedActivitiesIndexRouteImport } from './routes/_authenticated/activities/index'
 import { Route as AuthenticatedActivitiesIdRouteImport } from './routes/_authenticated/activities/$id'
+import { Route as AuthenticatedRidersIdRouteImport } from './routes/_authenticated/riders/$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -83,6 +84,11 @@ const AuthenticatedActivitiesIdRoute =
     path: '/activities/$id',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedRidersIdRoute = AuthenticatedRidersIdRouteImport.update({
+  id: '/riders/$id',
+  path: '/riders/$id',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -95,6 +101,7 @@ export interface FileRoutesByFullPath {
   '/profile': typeof AuthenticatedProfileRoute
   '/record': typeof AuthenticatedRecordRoute
   '/activities/$id': typeof AuthenticatedActivitiesIdRoute
+  '/riders/$id': typeof AuthenticatedRidersIdRoute
   '/activities/': typeof AuthenticatedActivitiesIndexRoute
 }
 export interface FileRoutesByTo {
@@ -108,6 +115,7 @@ export interface FileRoutesByTo {
   '/profile': typeof AuthenticatedProfileRoute
   '/record': typeof AuthenticatedRecordRoute
   '/activities/$id': typeof AuthenticatedActivitiesIdRoute
+  '/riders/$id': typeof AuthenticatedRidersIdRoute
   '/activities': typeof AuthenticatedActivitiesIndexRoute
 }
 export interface FileRoutesById {
@@ -123,6 +131,7 @@ export interface FileRoutesById {
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
   '/_authenticated/record': typeof AuthenticatedRecordRoute
   '/_authenticated/activities/$id': typeof AuthenticatedActivitiesIdRoute
+  '/_authenticated/riders/$id': typeof AuthenticatedRidersIdRoute
   '/_authenticated/activities/': typeof AuthenticatedActivitiesIndexRoute
 }
 export interface FileRouteTypes {
@@ -138,6 +147,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/record'
     | '/activities/$id'
+    | '/riders/$id'
     | '/activities/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -151,6 +161,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/record'
     | '/activities/$id'
+    | '/riders/$id'
     | '/activities'
   id:
     | '__root__'
@@ -165,6 +176,7 @@ export interface FileRouteTypes {
     | '/_authenticated/profile'
     | '/_authenticated/record'
     | '/_authenticated/activities/$id'
+    | '/_authenticated/riders/$id'
     | '/_authenticated/activities/'
   fileRoutesById: FileRoutesById
 }
@@ -262,6 +274,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedActivitiesIdRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/riders/$id': {
+      id: '/_authenticated/riders/$id'
+      path: '/riders/$id'
+      fullPath: '/riders/$id'
+      preLoaderRoute: typeof AuthenticatedRidersIdRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
   }
 }
 
@@ -272,6 +291,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
   AuthenticatedRecordRoute: typeof AuthenticatedRecordRoute
   AuthenticatedActivitiesIdRoute: typeof AuthenticatedActivitiesIdRoute
+  AuthenticatedRidersIdRoute: typeof AuthenticatedRidersIdRoute
   AuthenticatedActivitiesIndexRoute: typeof AuthenticatedActivitiesIndexRoute
 }
 
@@ -282,6 +302,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
   AuthenticatedRecordRoute: AuthenticatedRecordRoute,
   AuthenticatedActivitiesIdRoute: AuthenticatedActivitiesIdRoute,
+  AuthenticatedRidersIdRoute: AuthenticatedRidersIdRoute,
   AuthenticatedActivitiesIndexRoute: AuthenticatedActivitiesIndexRoute,
 }
 
