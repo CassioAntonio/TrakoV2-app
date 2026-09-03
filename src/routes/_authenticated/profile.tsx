@@ -40,10 +40,19 @@ function ProfileScreen() {
 
   return (
     <Screen title={name} subtitle={user?.email ?? ""}>
-      <div className="surface-card px-4 py-4">
-        <p className="font-display text-sm font-bold">Nível {stats.level}</p>
-        <p className="text-xs text-muted-foreground">{formatNumber(stats.xp)} XP acumulado</p>
+      <div className="surface-card flex items-center gap-3 px-4 py-4">
+        <RiderAvatar path={profile?.avatar_url} name={name} className="h-14 w-14" />
+        <div className="min-w-0 flex-1">
+          <p className="font-display text-sm font-bold">Nível {stats.level}</p>
+          <p className="text-xs text-muted-foreground">{formatNumber(stats.xp)} XP acumulado</p>
+        </div>
+        <ProfileEditor userId={uid} profile={profile}>
+          <Button variant="surface" size="sm">
+            <Pencil className="h-4 w-4" /> Editar
+          </Button>
+        </ProfileEditor>
       </div>
+
 
       <div className="grid grid-cols-2 gap-3">
         <StatTile label="Distância" value={formatKm(stats.distanceM)} unit="km" accent />
