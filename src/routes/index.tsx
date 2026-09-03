@@ -29,9 +29,15 @@ function Splash() {
 
   useEffect(() => {
     const slowTimer = window.setTimeout(() => setSlow(true), 2500);
-    const t = window.setTimeout(() => navigate({ to: "/home", replace: true }), 900);
+    let cancelled = false;
+    void (async () => {
+      const { data } = await supabase.auth.getSession();
+      await new Promise((r) => window.setTimeout(r, 700));
+      if (cancelled) return;
+      void navigate({ to: data.session ? "/home" : "/auth", replace: true });
+    })();
     return () => {
-      window.clearTimeout(t);
+      cancelled = true;
       window.clearTimeout(slowTimer);
     };
   }, [navigate]);
