@@ -87,6 +87,15 @@ function ProfileScreen() {
           </li>
         ))}
       </ul>
+
+      <Button
+        variant="surface"
+        size="tap"
+        className="mb-4 w-full"
+        onClick={() => void signOut()}
+      >
+        <LogOut className="h-4 w-4" /> Sair da conta
+      </Button>
     </Screen>
   );
 }
