@@ -1,6 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Trophy } from "lucide-react";
+import { Trophy, Pencil, LogOut } from "lucide-react";
+import { RiderAvatar } from "@/components/trako/RiderAvatar";
+import { ProfileEditor } from "@/components/trako/ProfileEditor";
+import { Button } from "@/components/ui/button";
 import { Screen, StatTile, SectionTitle } from "@/components/trako/Screen";
 import { useAuth } from "@/hooks/useAuth";
 import { listMyActivities, getProfile } from "@/services/activities";
