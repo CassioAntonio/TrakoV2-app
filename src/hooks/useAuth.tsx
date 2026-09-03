@@ -1,35 +1,60 @@
-import { createContext, useContext, type ReactNode } from "react";
-import { LOCAL_USER_ID } from "@/lib/local-store";
-
-/**
- * Authentication is temporarily disabled. The app runs with a single local
- * rider identity so every screen keeps working without a login flow.
- */
-export interface LocalUser {
-  id: string;
-  email: string | null;
-}
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import type { Session, User } from "@supabase/supabase-js";
+import { useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AuthState {
-  user: LocalUser | null;
+  user: User | null;
+  session: Session | null;
   loading: boolean;
   signOut: () => Promise<void>;
 }
 
-const localUser: LocalUser = { id: LOCAL_USER_ID, email: null };
-
 const AuthContext = createContext<AuthState>({
-  user: localUser,
-  loading: false,
+  user: null,
+  session: null,
+  loading: true,
   signOut: async () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  return (
-    <AuthContext.Provider value={{ user: localUser, loading: false, signOut: async () => {} }}>
-      {children}
-    </AuthContext.Provider>
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
+  const qc = useQueryClient();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, next) => {
+      setSession(next);
+      setLoading(false);
+      if (event === "SIGNED_IN" || event === "USER_UPDATED") {
+        void qc.invalidateQueries();
+      }
+    });
+    void supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setLoading(false);
+    });
+    return () => sub.subscription.unsubscribe();
+  }, [qc]);
+
+  const value = useMemo<AuthState>(
+    () => ({
+      user: session?.user ?? null,
+      session,
+      loading,
+      signOut: async () => {
+        await qc.cancelQueries();
+        qc.clear();
+        await supabase.auth.signOut();
+        void navigate({ to: "/auth", replace: true });
+      },
+    }),
+    [session, loading, qc, navigate],
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

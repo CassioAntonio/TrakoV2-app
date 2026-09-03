@@ -1,42 +1,40 @@
 import type { Activity, Profile, TrackPoint, Visibility, Discipline } from "@/types/trako";
-import { newId, readTable, writeTable } from "@/lib/local-store";
+import { supabase } from "@/integrations/supabase/client";
 
-/**
- * Local-only data layer (backend temporarily removed). Same API surface as
- * before so screens are untouched. Storage starts empty.
- */
+/** Data layer backed by Lovable Cloud (RLS scoped to the signed-in rider). */
 
-const ACTIVITIES = "activities";
-const PROFILES = "profiles";
-const FAVORITES = "favorites";
-const LIKES = "likes";
-
-function allActivities(): Activity[] {
-  return readTable<Activity>(ACTIVITIES).map((a) => ({
-    ...a,
-    track: Array.isArray(a.track) ? (a.track as TrackPoint[]) : [],
-  }));
-}
-
-function byStartedDesc(a: Activity, b: Activity) {
-  return (b.started_at ?? "").localeCompare(a.started_at ?? "");
+function mapActivity(row: Record<string, unknown>): Activity {
+  return {
+    ...(row as unknown as Activity),
+    track: Array.isArray(row['track']) ? (row['track'] as TrackPoint[]) : [],
+  };
 }
 
 export async function listMyActivities(userId: string): Promise<Activity[]> {
-  return allActivities()
-    .filter((a) => a.user_id === userId)
-    .sort(byStartedDesc);
+  const { data, error } = await supabase
+    .from("activities")
+    .select("*")
+    .eq("user_id", userId)
+    .order("started_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map(mapActivity);
 }
 
 export async function getActivity(id: string): Promise<Activity | null> {
-  return allActivities().find((a) => a.id === id) ?? null;
+  const { data, error } = await supabase.from("activities").select("*").eq("id", id).maybeSingle();
+  if (error) throw error;
+  return data ? mapActivity(data) : null;
 }
 
 export async function listPublicActivities(limit = 50): Promise<Activity[]> {
-  return allActivities()
-    .filter((a) => a.visibility === "public")
-    .sort(byStartedDesc)
-    .slice(0, limit);
+  const { data, error } = await supabase
+    .from("activities")
+    .select("*")
+    .eq("visibility", "public")
+    .order("started_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []).map(mapActivity);
 }
 
 export interface NewActivityInput {
@@ -62,74 +60,101 @@ export interface NewActivityInput {
 }
 
 export async function createActivity(input: NewActivityInput): Promise<Activity> {
-  const row = {
-    ...input,
-    id: newId(),
-    created_at: new Date().toISOString(),
-  } as unknown as Activity;
-  writeTable(ACTIVITIES, [row, ...readTable<Activity>(ACTIVITIES)]);
-  return row;
+  const { data, error } = await supabase
+    .from("activities")
+    .insert({ ...input, track: input.track as unknown as never })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return mapActivity(data);
 }
 
 export async function deleteActivity(id: string) {
-  writeTable(
-    ACTIVITIES,
-    readTable<Activity>(ACTIVITIES).filter((a) => a.id !== id),
-  );
+  const { error } = await supabase.from("activities").delete().eq("id", id);
+  if (error) throw error;
 }
 
 export async function updateActivity(id: string, patch: Record<string, unknown>) {
-  writeTable(
-    ACTIVITIES,
-    readTable<Activity>(ACTIVITIES).map((a) => (a.id === id ? { ...a, ...patch } : a)),
-  );
+  const { error } = await supabase
+    .from("activities")
+    .update(patch as never)
+    .eq("id", id);
+  if (error) throw error;
 }
 
 export async function getProfile(userId: string): Promise<Profile | null> {
-  return readTable<Profile>(PROFILES).find((p) => p.id === userId) ?? null;
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as Profile | null) ?? null;
 }
 
 export async function upsertProfile(profile: Partial<Profile> & { id: string }) {
-  const rows = readTable<Profile>(PROFILES);
-  const idx = rows.findIndex((p) => p.id === profile.id);
-  if (idx >= 0) rows[idx] = { ...rows[idx], ...profile } as Profile;
-  else rows.push(profile as Profile);
-  writeTable(PROFILES, rows);
+  const { error } = await supabase
+    .from("profiles")
+    .upsert({ ...profile, updated_at: new Date().toISOString() } as never);
+  if (error) throw error;
 }
 
 export async function getProfilesByIds(ids: string[]): Promise<Record<string, Profile>> {
+  if (ids.length === 0) return {};
+  const { data, error } = await supabase.from("profiles").select("*").in("id", ids);
+  if (error) throw error;
   const map: Record<string, Profile> = {};
-  for (const p of readTable<Profile>(PROFILES)) if (ids.includes(p.id)) map[p.id] = p;
+  for (const p of (data ?? []) as Profile[]) map[p.id] = p;
   return map;
 }
 
-interface Pair {
-  user_id: string;
-  activity_id: string;
-}
-
-function togglePair(table: string, userId: string, activityId: string, on: boolean) {
-  const rows = readTable<Pair>(table).filter(
-    (r) => !(r.user_id === userId && r.activity_id === activityId),
-  );
-  if (on) rows.push({ user_id: userId, activity_id: activityId });
-  writeTable(table, rows);
-}
-
 export async function toggleFavorite(userId: string, activityId: string, on: boolean) {
-  togglePair(FAVORITES, userId, activityId, on);
+  if (on) {
+    const { error } = await supabase
+      .from("favorites")
+      .upsert({ user_id: userId, activity_id: activityId });
+    if (error) throw error;
+  } else {
+    const { error } = await supabase
+      .from("favorites")
+      .delete()
+      .eq("user_id", userId)
+      .eq("activity_id", activityId);
+    if (error) throw error;
+  }
 }
 
 export async function listFavorites(userId: string): Promise<string[]> {
-  return readTable<Pair>(FAVORITES)
-    .filter((r) => r.user_id === userId)
-    .map((r) => r.activity_id);
+  const { data, error } = await supabase
+    .from("favorites")
+    .select("activity_id")
+    .eq("user_id", userId);
+  if (error) throw error;
+  return (data ?? []).map((r) => r.activity_id);
 }
 
 export async function toggleLike(userId: string, activityId: string, on: boolean) {
-  togglePair(LIKES, userId, activityId, on);
+  if (on) {
+    const { error } = await supabase
+      .from("activity_likes")
+      .upsert({ user_id: userId, activity_id: activityId });
+    if (error) throw error;
+  } else {
+    const { error } = await supabase
+      .from("activity_likes")
+      .delete()
+      .eq("user_id", userId)
+      .eq("activity_id", activityId);
+    if (error) throw error;
+  }
 }
 
 export async function listLikes(activityIds: string[]) {
-  return readTable<Pair>(LIKES).filter((r) => activityIds.includes(r.activity_id));
+  if (activityIds.length === 0) return [];
+  const { data, error } = await supabase
+    .from("activity_likes")
+    .select("activity_id,user_id")
+    .in("activity_id", activityIds);
+  if (error) throw error;
+  return data ?? [];
 }

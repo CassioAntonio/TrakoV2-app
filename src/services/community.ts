@@ -1,49 +1,58 @@
 import type { Profile } from "@/types/trako";
-import { newId, readTable, writeTable } from "@/lib/local-store";
+import { supabase } from "@/integrations/supabase/client";
 
-/**
- * Local-only community layer (backend temporarily removed). Same API surface
- * as before; storage starts empty.
- */
-
-const FOLLOWS = "follows";
-const COMMENTS = "comments";
-const PROFILES = "profiles";
-const AVATARS = "avatars";
-
-interface Follow {
-  follower_id: string;
-  following_id: string;
-}
+/** Community layer (follows, comments, rider search, avatars) backed by Lovable Cloud. */
 
 /* ------------------------------ follows ------------------------------ */
 
 export async function isFollowing(followerId: string, followingId: string): Promise<boolean> {
-  return readTable<Follow>(FOLLOWS).some(
-    (f) => f.follower_id === followerId && f.following_id === followingId,
-  );
+  const { data, error } = await supabase
+    .from("follows")
+    .select("follower_id")
+    .eq("follower_id", followerId)
+    .eq("following_id", followingId)
+    .maybeSingle();
+  if (error) throw error;
+  return !!data;
 }
 
 export async function setFollow(followerId: string, followingId: string, on: boolean) {
-  const rows = readTable<Follow>(FOLLOWS).filter(
-    (f) => !(f.follower_id === followerId && f.following_id === followingId),
-  );
-  if (on) rows.push({ follower_id: followerId, following_id: followingId });
-  writeTable(FOLLOWS, rows);
+  if (on) {
+    const { error } = await supabase
+      .from("follows")
+      .upsert({ follower_id: followerId, following_id: followingId });
+    if (error) throw error;
+  } else {
+    const { error } = await supabase
+      .from("follows")
+      .delete()
+      .eq("follower_id", followerId)
+      .eq("following_id", followingId);
+    if (error) throw error;
+  }
 }
 
 export async function getFollowCounts(userId: string) {
-  const rows = readTable<Follow>(FOLLOWS);
-  return {
-    followers: rows.filter((f) => f.following_id === userId).length,
-    following: rows.filter((f) => f.follower_id === userId).length,
-  };
+  const [followers, following] = await Promise.all([
+    supabase
+      .from("follows")
+      .select("follower_id", { count: "exact", head: true })
+      .eq("following_id", userId),
+    supabase
+      .from("follows")
+      .select("following_id", { count: "exact", head: true })
+      .eq("follower_id", userId),
+  ]);
+  return { followers: followers.count ?? 0, following: following.count ?? 0 };
 }
 
 export async function listFollowingIds(userId: string): Promise<string[]> {
-  return readTable<Follow>(FOLLOWS)
-    .filter((f) => f.follower_id === userId)
-    .map((f) => f.following_id);
+  const { data, error } = await supabase
+    .from("follows")
+    .select("following_id")
+    .eq("follower_id", userId);
+  if (error) throw error;
+  return (data ?? []).map((f) => f.following_id);
 }
 
 /* ------------------------------ comments ------------------------------ */
@@ -57,69 +66,59 @@ export interface ActivityComment {
 }
 
 export async function listComments(activityId: string): Promise<ActivityComment[]> {
-  return readTable<ActivityComment>(COMMENTS)
-    .filter((c) => c.activity_id === activityId)
-    .sort((a, b) => a.created_at.localeCompare(b.created_at));
+  const { data, error } = await supabase
+    .from("activity_comments")
+    .select("*")
+    .eq("activity_id", activityId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as ActivityComment[];
 }
 
 export async function addComment(activityId: string, userId: string, body: string) {
-  const rows = readTable<ActivityComment>(COMMENTS);
-  rows.push({
-    id: newId(),
-    activity_id: activityId,
-    user_id: userId,
-    body,
-    created_at: new Date().toISOString(),
-  });
-  writeTable(COMMENTS, rows);
+  const { error } = await supabase
+    .from("activity_comments")
+    .insert({ activity_id: activityId, user_id: userId, body });
+  if (error) throw error;
 }
 
 export async function deleteComment(id: string) {
-  writeTable(
-    COMMENTS,
-    readTable<ActivityComment>(COMMENTS).filter((c) => c.id !== id),
-  );
+  const { error } = await supabase.from("activity_comments").delete().eq("id", id);
+  if (error) throw error;
 }
 
 /* ------------------------------ riders ------------------------------ */
 
 export async function searchRiders(term: string): Promise<Profile[]> {
-  const q = term.trim().toLowerCase();
+  const q = term.trim();
   if (!q) return [];
-  return readTable<Profile>(PROFILES)
-    .filter(
-      (p) =>
-        (p.username ?? "").toLowerCase().includes(q) ||
-        (p.display_name ?? "").toLowerCase().includes(q),
-    )
-    .slice(0, 20);
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .or(`username.ilike.%${q}%,display_name.ilike.%${q}%`)
+    .limit(20);
+  if (error) throw error;
+  return (data ?? []) as Profile[];
 }
 
 /* ------------------------------ avatars ------------------------------ */
 
-interface StoredAvatar {
-  path: string;
-  data: string;
-}
-
-/** Stores the picked image locally as a data URL and returns its local path. */
+/** Uploads the picked image to private storage and returns its path. */
 export async function uploadAvatar(userId: string, file: File): Promise<string> {
-  const path = `${userId}/${Date.now()}`;
-  const data = await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
-  const rows = readTable<StoredAvatar>(AVATARS).filter((a) => !a.path.startsWith(`${userId}/`));
-  rows.push({ path, data });
-  writeTable(AVATARS, rows);
+  const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+  const path = `${userId}/${Date.now()}.${ext}`;
+  const { error } = await supabase.storage
+    .from("avatars")
+    .upload(path, file, { upsert: true, contentType: file.type || "image/jpeg" });
+  if (error) throw error;
   return path;
 }
 
-/** Resolves a stored avatar path to a displayable URL. */
+/** Resolves a stored avatar path to a temporary displayable URL. */
 export async function avatarUrl(path: string | null | undefined): Promise<string | null> {
   if (!path) return null;
   if (path.startsWith("http") || path.startsWith("data:")) return path;
-  return readTable<StoredAvatar>(AVATARS).find((a) => a.path === path)?.data ?? null;
+  const { data, error } = await supabase.storage.from("avatars").createSignedUrl(path, 3600);
+  if (error) return null;
+  return data?.signedUrl ?? null;
 }

@@ -1,6 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Trophy } from "lucide-react";
+import { Trophy, Pencil, LogOut } from "lucide-react";
+import { RiderAvatar } from "@/components/trako/RiderAvatar";
+import { ProfileEditor } from "@/components/trako/ProfileEditor";
+import { Button } from "@/components/ui/button";
 import { Screen, StatTile, SectionTitle } from "@/components/trako/Screen";
 import { useAuth } from "@/hooks/useAuth";
 import { listMyActivities, getProfile } from "@/services/activities";
@@ -40,10 +43,19 @@ function ProfileScreen() {
 
   return (
     <Screen title={name} subtitle={user?.email ?? ""}>
-      <div className="surface-card px-4 py-4">
-        <p className="font-display text-sm font-bold">Nível {stats.level}</p>
-        <p className="text-xs text-muted-foreground">{formatNumber(stats.xp)} XP acumulado</p>
+      <div className="surface-card flex items-center gap-3 px-4 py-4">
+        <RiderAvatar path={profile?.avatar_url} name={name} className="h-14 w-14" />
+        <div className="min-w-0 flex-1">
+          <p className="font-display text-sm font-bold">Nível {stats.level}</p>
+          <p className="text-xs text-muted-foreground">{formatNumber(stats.xp)} XP acumulado</p>
+        </div>
+        <ProfileEditor userId={uid} profile={profile}>
+          <Button variant="surface" size="sm">
+            <Pencil className="h-4 w-4" /> Editar
+          </Button>
+        </ProfileEditor>
       </div>
+
 
       <div className="grid grid-cols-2 gap-3">
         <StatTile label="Distância" value={formatKm(stats.distanceM)} unit="km" accent />
@@ -75,6 +87,15 @@ function ProfileScreen() {
           </li>
         ))}
       </ul>
+
+      <Button
+        variant="surface"
+        size="tap"
+        className="mb-4 w-full"
+        onClick={() => void signOut()}
+      >
+        <LogOut className="h-4 w-4" /> Sair da conta
+      </Button>
     </Screen>
   );
 }
