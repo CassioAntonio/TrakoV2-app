@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Trophy, Pencil, LogOut } from "lucide-react";
+import { Trophy, Pencil } from "lucide-react";
 import { RiderAvatar } from "@/components/trako/RiderAvatar";
 import { ProfileEditor } from "@/components/trako/ProfileEditor";
 import { Button } from "@/components/ui/button";
@@ -87,15 +87,6 @@ function ProfileScreen() {
           </li>
         ))}
       </ul>
-
-      <Button
-        variant="surface"
-        size="tap"
-        className="mb-4 w-full"
-        onClick={() => void signOut()}
-      >
-        <LogOut className="h-4 w-4" /> Sair da conta
-      </Button>
     </Screen>
   );
 }
