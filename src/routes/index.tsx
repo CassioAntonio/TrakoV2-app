@@ -1,7 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { TrakoMark } from "@/components/trako/Brand";
-import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/")({
   ssr: false,
@@ -23,23 +22,19 @@ export const Route = createFileRoute("/")({
   component: Splash,
 });
 
-/** Splash: decides between the app and first access. No marketing, no onboarding replay. */
+/** Splash: goes straight into the app (authentication disabled). */
 function Splash() {
   const navigate = useNavigate();
   const [slow, setSlow] = useState(false);
 
   useEffect(() => {
     const slowTimer = window.setTimeout(() => setSlow(true), 2500);
-    let cancelled = false;
-    void (async () => {
-      const { data } = await supabase.auth.getSession();
-      await new Promise((r) => window.setTimeout(r, 700));
-      if (cancelled) return;
-      void navigate({ to: data.session ? "/home" : "/auth", replace: true });
-    })();
+    const go = window.setTimeout(() => {
+      void navigate({ to: "/home", replace: true });
+    }, 700);
     return () => {
-      cancelled = true;
       window.clearTimeout(slowTimer);
+      window.clearTimeout(go);
     };
   }, [navigate]);
 
