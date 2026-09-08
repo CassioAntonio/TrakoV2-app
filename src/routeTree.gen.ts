@@ -13,9 +13,11 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AuthenticatedExploreRouteImport } from './routes/_authenticated/explore'
 import { Route as AuthenticatedFeedRouteImport } from './routes/_authenticated/feed'
+import { Route as AuthenticatedGarageRouteImport } from './routes/_authenticated/garage'
 import { Route as AuthenticatedHomeRouteImport } from './routes/_authenticated/home'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
 import { Route as AuthenticatedRecordRouteImport } from './routes/_authenticated/record'
+import { Route as AuthenticatedSchoolRouteImport } from './routes/_authenticated/school'
 import { Route as AuthenticatedActivitiesIndexRouteImport } from './routes/_authenticated/activities/index'
 import { Route as AuthenticatedActivitiesIdRouteImport } from './routes/_authenticated/activities/$id'
 import { Route as AuthenticatedRidersIdRouteImport } from './routes/_authenticated/riders/$id'
@@ -39,6 +41,11 @@ const AuthenticatedFeedRoute = AuthenticatedFeedRouteImport.update({
   path: '/feed',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedGarageRoute = AuthenticatedGarageRouteImport.update({
+  id: '/garage',
+  path: '/garage',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedHomeRoute = AuthenticatedHomeRouteImport.update({
   id: '/home',
   path: '/home',
@@ -52,6 +59,11 @@ const AuthenticatedProfileRoute = AuthenticatedProfileRouteImport.update({
 const AuthenticatedRecordRoute = AuthenticatedRecordRouteImport.update({
   id: '/record',
   path: '/record',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedSchoolRoute = AuthenticatedSchoolRouteImport.update({
+  id: '/school',
+  path: '/school',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedActivitiesIndexRoute =
@@ -76,9 +88,11 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/explore': typeof AuthenticatedExploreRoute
   '/feed': typeof AuthenticatedFeedRoute
+  '/garage': typeof AuthenticatedGarageRoute
   '/home': typeof AuthenticatedHomeRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/record': typeof AuthenticatedRecordRoute
+  '/school': typeof AuthenticatedSchoolRoute
   '/activities/$id': typeof AuthenticatedActivitiesIdRoute
   '/riders/$id': typeof AuthenticatedRidersIdRoute
   '/activities/': typeof AuthenticatedActivitiesIndexRoute
@@ -87,9 +101,11 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/explore': typeof AuthenticatedExploreRoute
   '/feed': typeof AuthenticatedFeedRoute
+  '/garage': typeof AuthenticatedGarageRoute
   '/home': typeof AuthenticatedHomeRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/record': typeof AuthenticatedRecordRoute
+  '/school': typeof AuthenticatedSchoolRoute
   '/activities/$id': typeof AuthenticatedActivitiesIdRoute
   '/riders/$id': typeof AuthenticatedRidersIdRoute
   '/activities': typeof AuthenticatedActivitiesIndexRoute
@@ -100,9 +116,11 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/_authenticated/explore': typeof AuthenticatedExploreRoute
   '/_authenticated/feed': typeof AuthenticatedFeedRoute
+  '/_authenticated/garage': typeof AuthenticatedGarageRoute
   '/_authenticated/home': typeof AuthenticatedHomeRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
   '/_authenticated/record': typeof AuthenticatedRecordRoute
+  '/_authenticated/school': typeof AuthenticatedSchoolRoute
   '/_authenticated/activities/$id': typeof AuthenticatedActivitiesIdRoute
   '/_authenticated/riders/$id': typeof AuthenticatedRidersIdRoute
   '/_authenticated/activities/': typeof AuthenticatedActivitiesIndexRoute
@@ -113,9 +131,11 @@ export interface FileRouteTypes {
     | '/'
     | '/explore'
     | '/feed'
+    | '/garage'
     | '/home'
     | '/profile'
     | '/record'
+    | '/school'
     | '/activities/$id'
     | '/riders/$id'
     | '/activities/'
@@ -124,9 +144,11 @@ export interface FileRouteTypes {
     | '/'
     | '/explore'
     | '/feed'
+    | '/garage'
     | '/home'
     | '/profile'
     | '/record'
+    | '/school'
     | '/activities/$id'
     | '/riders/$id'
     | '/activities'
@@ -136,9 +158,11 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/_authenticated/explore'
     | '/_authenticated/feed'
+    | '/_authenticated/garage'
     | '/_authenticated/home'
     | '/_authenticated/profile'
     | '/_authenticated/record'
+    | '/_authenticated/school'
     | '/_authenticated/activities/$id'
     | '/_authenticated/riders/$id'
     | '/_authenticated/activities/'
@@ -179,6 +203,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFeedRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/garage': {
+      id: '/_authenticated/garage'
+      path: '/garage'
+      fullPath: '/garage'
+      preLoaderRoute: typeof AuthenticatedGarageRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/home': {
       id: '/_authenticated/home'
       path: '/home'
@@ -198,6 +229,13 @@ declare module '@tanstack/react-router' {
       path: '/record'
       fullPath: '/record'
       preLoaderRoute: typeof AuthenticatedRecordRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/school': {
+      id: '/_authenticated/school'
+      path: '/school'
+      fullPath: '/school'
+      preLoaderRoute: typeof AuthenticatedSchoolRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/activities/': {
@@ -227,9 +265,11 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteChildren {
   AuthenticatedExploreRoute: typeof AuthenticatedExploreRoute
   AuthenticatedFeedRoute: typeof AuthenticatedFeedRoute
+  AuthenticatedGarageRoute: typeof AuthenticatedGarageRoute
   AuthenticatedHomeRoute: typeof AuthenticatedHomeRoute
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
   AuthenticatedRecordRoute: typeof AuthenticatedRecordRoute
+  AuthenticatedSchoolRoute: typeof AuthenticatedSchoolRoute
   AuthenticatedActivitiesIdRoute: typeof AuthenticatedActivitiesIdRoute
   AuthenticatedRidersIdRoute: typeof AuthenticatedRidersIdRoute
   AuthenticatedActivitiesIndexRoute: typeof AuthenticatedActivitiesIndexRoute
@@ -238,9 +278,11 @@ interface AuthenticatedRouteChildren {
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedExploreRoute: AuthenticatedExploreRoute,
   AuthenticatedFeedRoute: AuthenticatedFeedRoute,
+  AuthenticatedGarageRoute: AuthenticatedGarageRoute,
   AuthenticatedHomeRoute: AuthenticatedHomeRoute,
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
   AuthenticatedRecordRoute: AuthenticatedRecordRoute,
+  AuthenticatedSchoolRoute: AuthenticatedSchoolRoute,
   AuthenticatedActivitiesIdRoute: AuthenticatedActivitiesIdRoute,
   AuthenticatedRidersIdRoute: AuthenticatedRidersIdRoute,
   AuthenticatedActivitiesIndexRoute: AuthenticatedActivitiesIndexRoute,
