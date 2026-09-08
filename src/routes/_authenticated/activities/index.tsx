@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { listMyActivities } from "@/services/activities";
 import { computeStats } from "@/lib/achievements";
 import { formatKm, formatHours } from "@/lib/format";
-import { ActivityRow } from "../home";
+import { ActivityRow } from "@/components/trako/ActivityCard";
 
 export const Route = createFileRoute("/_authenticated/activities/")({
   head: () => ({
