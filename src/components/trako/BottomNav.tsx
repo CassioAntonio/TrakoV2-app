@@ -1,12 +1,12 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, Compass, CircleDot, ListChecks, User } from "lucide-react";
+import { Home, Compass, CircleDot, Warehouse, GraduationCap } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
   { to: "/home", label: "Início", icon: Home },
+  { to: "/garage", label: "Garagem", icon: Warehouse },
+  { to: "/school", label: "Escola", icon: GraduationCap },
   { to: "/explore", label: "Explorar", icon: Compass },
-  { to: "/activities", label: "Atividades", icon: ListChecks },
-  { to: "/profile", label: "Perfil", icon: User },
 ] as const;
 
 export function BottomNav() {
