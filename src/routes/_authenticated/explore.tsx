@@ -58,9 +58,10 @@ function Explore() {
         <MapSurface
           className="h-full w-full"
           center={fix ? { lat: fix.lat, lng: fix.lng } : null}
-          zoom={11}
+          zoom={13}
           tracks={tracks}
           markers={markers}
+          follow={follow}
           showUser
           interactive
         />
@@ -84,11 +85,16 @@ function Explore() {
               {formatKm(filtered.reduce((s, a) => s + a.distance_m, 0), 0)} km
             </span>
           </div>
-          {status !== "granted" && (
-            <Button variant="surface" size="sm" onClick={retry}>
-              <Crosshair className="h-4 w-4" /> Minha posição
-            </Button>
-          )}
+          <Button
+            variant={follow && status === "granted" ? "action" : "surface"}
+            size="sm"
+            onClick={() => {
+              setFollow(true);
+              if (status !== "granted") retry();
+            }}
+          >
+            <Crosshair className="h-4 w-4" /> Minha posição
+          </Button>
         </div>
       </div>
     </Screen>
