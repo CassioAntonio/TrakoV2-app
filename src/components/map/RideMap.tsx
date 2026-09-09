@@ -68,8 +68,11 @@ export default function RideMap({
   fitTrack = false,
   interactive = true,
   showUser = true,
+  onUserInteract,
   className,
 }: Props) {
+  const interactRef = useRef(onUserInteract);
+  interactRef.current = onUserInteract;
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MLMap | null>(null);
   const userMarker = useRef<maplibregl.Marker | null>(null);
