@@ -25,8 +25,9 @@ export const Route = createFileRoute("/_authenticated/explore")({
 });
 
 function Explore() {
-  const { fix, status, retry } = useGeolocation({ auto: true });
+  const { fix, status, error, retry } = useGeolocation({ auto: true });
   const [filter, setFilter] = useState<Discipline | "all">("all");
+  const [follow, setFollow] = useState(true);
 
   const { data: activities = [] } = useQuery({
     queryKey: ["public-activities"],
