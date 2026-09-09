@@ -25,8 +25,9 @@ export const Route = createFileRoute("/_authenticated/explore")({
 });
 
 function Explore() {
-  const { fix, status, retry } = useGeolocation({ auto: true });
+  const { fix, status, error, retry } = useGeolocation({ auto: true });
   const [filter, setFilter] = useState<Discipline | "all">("all");
+  const [follow, setFollow] = useState(true);
 
   const { data: activities = [] } = useQuery({
     queryKey: ["public-activities"],
@@ -57,12 +58,21 @@ function Explore() {
         <MapSurface
           className="h-full w-full"
           center={fix ? { lat: fix.lat, lng: fix.lng } : null}
-          zoom={11}
+          zoom={13}
           tracks={tracks}
           markers={markers}
+          follow={follow}
           showUser
           interactive
+          onUserInteract={() => setFollow(false)}
         />
+
+        {(status === "denied" || status === "unavailable") && (
+          <div className="absolute inset-x-3 bottom-20 surface-card px-3 py-2 text-xs text-destructive">
+            {error ?? "Não foi possível obter sua localização."}
+          </div>
+        )}
+
 
         <div className="pointer-events-none absolute inset-x-0 top-2 flex gap-2 overflow-x-auto px-3 pb-2 [scrollbar-width:none]">
           <Chip active={filter === "all"} onClick={() => setFilter("all")}>
@@ -83,11 +93,16 @@ function Explore() {
               {formatKm(filtered.reduce((s, a) => s + a.distance_m, 0), 0)} km
             </span>
           </div>
-          {status !== "granted" && (
-            <Button variant="surface" size="sm" onClick={retry}>
-              <Crosshair className="h-4 w-4" /> Minha posição
-            </Button>
-          )}
+          <Button
+            variant={follow && status === "granted" ? "action" : "surface"}
+            size="sm"
+            onClick={() => {
+              setFollow(true);
+              if (status !== "granted") retry();
+            }}
+          >
+            <Crosshair className="h-4 w-4" /> Minha posição
+          </Button>
         </div>
       </div>
     </Screen>

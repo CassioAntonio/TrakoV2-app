@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useRecorder } from "@/hooks/useRecorder";
+import { useGeolocation } from "@/hooks/useGeolocation";
 import { useAuth } from "@/hooks/useAuth";
 import { createActivity } from "@/services/activities";
 import { reverseGeocode } from "@/lib/geo";
@@ -40,8 +41,27 @@ function RecordScreen() {
   const [visibility, setVisibility] = useState<Visibility>("private");
   const [saving, setSaving] = useState(false);
 
+  // Fora da gravação mantemos um watch leve só para posicionar o mapa na
+  // localização real do piloto; durante a gravação quem manda é o recorder.
+  const geo = useGeolocation({ auto: rec.state !== "recording", highAccuracy: false });
+
   const last = rec.points[rec.points.length - 1];
-  const center = last ? { lat: last.lat, lng: last.lng } : null;
+  const center = last
+    ? { lat: last.lat, lng: last.lng }
+    : geo.fix
+      ? { lat: geo.fix.lat, lng: geo.fix.lng }
+      : null;
+
+  const accuracy = rec.state === "recording" ? rec.gpsAccuracy : (geo.fix?.accuracy ?? null);
+  const gpsMessage =
+    rec.gpsError ??
+    (geo.status === "denied"
+      ? "Permissão de localização negada."
+      : geo.status === "unavailable"
+        ? "GPS indisponível neste dispositivo."
+        : null);
+  const gpsBad = Boolean(gpsMessage);
+  const lowAccuracy = !gpsBad && accuracy !== null && accuracy > 30;
 
   async function save() {
     if (!user) return;
@@ -181,13 +201,23 @@ function RecordScreen() {
       <div className="absolute inset-x-0 top-0 space-y-3 bg-gradient-to-b from-background via-background/85 to-transparent px-4 pb-8 pt-[calc(env(safe-area-inset-top,0px)+1rem)]">
         <div className="flex items-center justify-between">
           <span className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Satellite className={cn("h-4 w-4", rec.gpsError ? "text-destructive" : "text-primary")} />
-            {rec.gpsError
-              ? rec.gpsError
-              : rec.gpsAccuracy
-                ? `GPS ±${Math.round(rec.gpsAccuracy)} m`
+            <Satellite
+              className={cn(
+                "h-4 w-4",
+                gpsBad ? "text-destructive" : lowAccuracy ? "text-amber-400" : "text-primary",
+              )}
+            />
+            {gpsMessage
+              ? gpsMessage
+              : accuracy
+                ? `GPS ±${Math.round(accuracy)} m${lowAccuracy ? " · precisão baixa" : ""}`
                 : "Procurando sinal…"}
           </span>
+          {gpsBad && (
+            <Button variant="surface" size="sm" onClick={geo.retry}>
+              Ativar GPS
+            </Button>
+          )}
           {rec.state === "idle" && (
             <select
               value={rec.sport}

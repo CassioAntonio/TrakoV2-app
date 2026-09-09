@@ -68,8 +68,11 @@ export default function RideMap({
   fitTrack = false,
   interactive = true,
   showUser = true,
+  onUserInteract,
   className,
 }: Props) {
+  const interactRef = useRef(onUserInteract);
+  interactRef.current = onUserInteract;
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MLMap | null>(null);
   const userMarker = useRef<maplibregl.Marker | null>(null);
@@ -119,6 +122,12 @@ export default function RideMap({
       });
       map.resize();
     });
+
+    const onManual = (e: { originalEvent?: unknown }) => {
+      if (e.originalEvent) interactRef.current?.();
+    };
+    map.on("dragstart", onManual);
+    map.on("zoomstart", onManual);
 
     if (interactive) {
       map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
