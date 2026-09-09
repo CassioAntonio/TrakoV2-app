@@ -27,5 +27,7 @@ export interface MapViewProps {
   fitTrack?: boolean;
   interactive?: boolean;
   showUser?: boolean;
+  /** disparado quando o piloto arrasta/zooma o mapa manualmente */
+  onUserInteract?: () => void;
   className?: string;
 }

@@ -64,7 +64,15 @@ function Explore() {
           follow={follow}
           showUser
           interactive
+          onUserInteract={() => setFollow(false)}
         />
+
+        {(status === "denied" || status === "unavailable") && (
+          <div className="absolute inset-x-3 bottom-20 surface-card px-3 py-2 text-xs text-destructive">
+            {error ?? "Não foi possível obter sua localização."}
+          </div>
+        )}
+
 
         <div className="pointer-events-none absolute inset-x-0 top-2 flex gap-2 overflow-x-auto px-3 pb-2 [scrollbar-width:none]">
           <Chip active={filter === "all"} onClick={() => setFilter("all")}>
