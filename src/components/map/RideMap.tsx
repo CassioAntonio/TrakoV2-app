@@ -123,6 +123,12 @@ export default function RideMap({
       map.resize();
     });
 
+    const onManual = (e: { originalEvent?: unknown }) => {
+      if (e.originalEvent) interactRef.current?.();
+    };
+    map.on("dragstart", onManual);
+    map.on("zoomstart", onManual);
+
     if (interactive) {
       map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
       map.addControl(
