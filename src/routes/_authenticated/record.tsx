@@ -201,13 +201,23 @@ function RecordScreen() {
       <div className="absolute inset-x-0 top-0 space-y-3 bg-gradient-to-b from-background via-background/85 to-transparent px-4 pb-8 pt-[calc(env(safe-area-inset-top,0px)+1rem)]">
         <div className="flex items-center justify-between">
           <span className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Satellite className={cn("h-4 w-4", rec.gpsError ? "text-destructive" : "text-primary")} />
-            {rec.gpsError
-              ? rec.gpsError
-              : rec.gpsAccuracy
-                ? `GPS ±${Math.round(rec.gpsAccuracy)} m`
+            <Satellite
+              className={cn(
+                "h-4 w-4",
+                gpsBad ? "text-destructive" : lowAccuracy ? "text-amber-400" : "text-primary",
+              )}
+            />
+            {gpsMessage
+              ? gpsMessage
+              : accuracy
+                ? `GPS ±${Math.round(accuracy)} m${lowAccuracy ? " · precisão baixa" : ""}`
                 : "Procurando sinal…"}
           </span>
+          {gpsBad && (
+            <Button variant="surface" size="sm" onClick={geo.retry}>
+              Ativar GPS
+            </Button>
+          )}
           {rec.state === "idle" && (
             <select
               value={rec.sport}
