@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useRecorder } from "@/hooks/useRecorder";
+import { useGeolocation } from "@/hooks/useGeolocation";
 import { useAuth } from "@/hooks/useAuth";
 import { createActivity } from "@/services/activities";
 import { reverseGeocode } from "@/lib/geo";
@@ -40,8 +41,27 @@ function RecordScreen() {
   const [visibility, setVisibility] = useState<Visibility>("private");
   const [saving, setSaving] = useState(false);
 
+  // Fora da gravação mantemos um watch leve só para posicionar o mapa na
+  // localização real do piloto; durante a gravação quem manda é o recorder.
+  const geo = useGeolocation({ auto: rec.state !== "recording", highAccuracy: false });
+
   const last = rec.points[rec.points.length - 1];
-  const center = last ? { lat: last.lat, lng: last.lng } : null;
+  const center = last
+    ? { lat: last.lat, lng: last.lng }
+    : geo.fix
+      ? { lat: geo.fix.lat, lng: geo.fix.lng }
+      : null;
+
+  const accuracy = rec.state === "recording" ? rec.gpsAccuracy : (geo.fix?.accuracy ?? null);
+  const gpsMessage =
+    rec.gpsError ??
+    (geo.status === "denied"
+      ? "Permissão de localização negada."
+      : geo.status === "unavailable"
+        ? "GPS indisponível neste dispositivo."
+        : null);
+  const gpsBad = Boolean(gpsMessage);
+  const lowAccuracy = !gpsBad && accuracy !== null && accuracy > 30;
 
   async function save() {
     if (!user) return;
