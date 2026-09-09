@@ -5,28 +5,11 @@ import type { LngLatBoundsLike, Map as MLMap } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { TrackPoint } from "@/types/trako";
 import { boundsOf } from "@/lib/geo";
+import type { MapViewProps } from "./types";
 
-export interface MapMarker {
-  id: string;
-  lat: number;
-  lng: number;
-  label?: string;
-  onClick?: () => void;
-}
+export type { MapMarker } from "./types";
 
-interface Props {
-  center?: { lat: number; lng: number } | null;
-  zoom?: number;
-  track?: TrackPoint[];
-  tracks?: { id: string; points: TrackPoint[] }[];
-  markers?: MapMarker[];
-  /** keep the camera locked on the live position */
-  follow?: boolean;
-  fitTrack?: boolean;
-  interactive?: boolean;
-  showUser?: boolean;
-  className?: string;
-}
+type Props = MapViewProps;
 
 /**
  * OpenStreetMap standard raster tiles — no API key, no token, no usage plan.
