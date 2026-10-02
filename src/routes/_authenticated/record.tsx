@@ -43,7 +43,7 @@ function RecordScreen() {
 
   // Fora da gravação mantemos um watch leve só para posicionar o mapa na
   // localização real do piloto; durante a gravação quem manda é o recorder.
-  const geo = useGeolocation({ auto: rec.state !== "recording", highAccuracy: false });
+  const geo = useGeolocation({ auto: rec.state !== "recording", highAccuracy: true });
 
   const last = rec.points[rec.points.length - 1];
   const center = last
@@ -192,9 +192,9 @@ function RecordScreen() {
       <MapSurface
         className="absolute inset-0 h-full w-full"
         center={center}
-        zoom={16}
+        zoom={rec.state === "idle" ? 16 : 17}
         track={rec.points}
-        follow={rec.state === "recording"}
+        follow={rec.state !== "idle"}
         showUser
       />
 
