@@ -17,7 +17,6 @@ import { Route as AuthenticatedGarageRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedHomeRouteImport } from './routes/_authenticated/home'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
 import { Route as AuthenticatedRecordRouteImport } from './routes/_authenticated/record'
-import { Route as AuthenticatedSchoolRouteImport } from './routes/_authenticated/school'
 import { Route as AuthenticatedActivitiesIndexRouteImport } from './routes/_authenticated/activities/index'
 import { Route as AuthenticatedActivitiesIdRouteImport } from './routes/_authenticated/activities/$id'
 import { Route as AuthenticatedRidersIdRouteImport } from './routes/_authenticated/riders/$id'
@@ -61,11 +60,6 @@ const AuthenticatedRecordRoute = AuthenticatedRecordRouteImport.update({
   path: '/record',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
-const AuthenticatedSchoolRoute = AuthenticatedSchoolRouteImport.update({
-  id: '/school',
-  path: '/school',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
 const AuthenticatedActivitiesIndexRoute =
   AuthenticatedActivitiesIndexRouteImport.update({
     id: '/activities/',
@@ -92,7 +86,6 @@ export interface FileRoutesByFullPath {
   '/home': typeof AuthenticatedHomeRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/record': typeof AuthenticatedRecordRoute
-  '/school': typeof AuthenticatedSchoolRoute
   '/activities/$id': typeof AuthenticatedActivitiesIdRoute
   '/riders/$id': typeof AuthenticatedRidersIdRoute
   '/activities/': typeof AuthenticatedActivitiesIndexRoute
@@ -105,7 +98,6 @@ export interface FileRoutesByTo {
   '/home': typeof AuthenticatedHomeRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/record': typeof AuthenticatedRecordRoute
-  '/school': typeof AuthenticatedSchoolRoute
   '/activities/$id': typeof AuthenticatedActivitiesIdRoute
   '/riders/$id': typeof AuthenticatedRidersIdRoute
   '/activities': typeof AuthenticatedActivitiesIndexRoute
@@ -120,7 +112,6 @@ export interface FileRoutesById {
   '/_authenticated/home': typeof AuthenticatedHomeRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
   '/_authenticated/record': typeof AuthenticatedRecordRoute
-  '/_authenticated/school': typeof AuthenticatedSchoolRoute
   '/_authenticated/activities/$id': typeof AuthenticatedActivitiesIdRoute
   '/_authenticated/riders/$id': typeof AuthenticatedRidersIdRoute
   '/_authenticated/activities/': typeof AuthenticatedActivitiesIndexRoute
@@ -135,7 +126,6 @@ export interface FileRouteTypes {
     | '/home'
     | '/profile'
     | '/record'
-    | '/school'
     | '/activities/$id'
     | '/riders/$id'
     | '/activities/'
@@ -148,7 +138,6 @@ export interface FileRouteTypes {
     | '/home'
     | '/profile'
     | '/record'
-    | '/school'
     | '/activities/$id'
     | '/riders/$id'
     | '/activities'
@@ -162,7 +151,6 @@ export interface FileRouteTypes {
     | '/_authenticated/home'
     | '/_authenticated/profile'
     | '/_authenticated/record'
-    | '/_authenticated/school'
     | '/_authenticated/activities/$id'
     | '/_authenticated/riders/$id'
     | '/_authenticated/activities/'
@@ -231,13 +219,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRecordRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/school': {
-      id: '/_authenticated/school'
-      path: '/school'
-      fullPath: '/school'
-      preLoaderRoute: typeof AuthenticatedSchoolRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
     '/_authenticated/activities/': {
       id: '/_authenticated/activities/'
       path: '/activities'
@@ -269,7 +250,6 @@ interface AuthenticatedRouteChildren {
   AuthenticatedHomeRoute: typeof AuthenticatedHomeRoute
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
   AuthenticatedRecordRoute: typeof AuthenticatedRecordRoute
-  AuthenticatedSchoolRoute: typeof AuthenticatedSchoolRoute
   AuthenticatedActivitiesIdRoute: typeof AuthenticatedActivitiesIdRoute
   AuthenticatedRidersIdRoute: typeof AuthenticatedRidersIdRoute
   AuthenticatedActivitiesIndexRoute: typeof AuthenticatedActivitiesIndexRoute
@@ -282,7 +262,6 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedHomeRoute: AuthenticatedHomeRoute,
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
   AuthenticatedRecordRoute: AuthenticatedRecordRoute,
-  AuthenticatedSchoolRoute: AuthenticatedSchoolRoute,
   AuthenticatedActivitiesIdRoute: AuthenticatedActivitiesIdRoute,
   AuthenticatedRidersIdRoute: AuthenticatedRidersIdRoute,
   AuthenticatedActivitiesIndexRoute: AuthenticatedActivitiesIndexRoute,

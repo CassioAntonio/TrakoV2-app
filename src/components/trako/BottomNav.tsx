@@ -1,11 +1,10 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, Compass, CircleDot, Warehouse, GraduationCap } from "lucide-react";
+import { Home, Compass, CircleDot, Warehouse } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
   { to: "/home", label: "Início", icon: Home },
   { to: "/garage", label: "Garagem", icon: Warehouse },
-  { to: "/school", label: "Escola", icon: GraduationCap },
   { to: "/explore", label: "Explorar", icon: Compass },
 ] as const;
 
@@ -15,7 +14,7 @@ export function BottomNav() {
 
   return (
     <nav className="safe-bottom relative z-30 border-t border-border bg-background/95 pt-1 backdrop-blur">
-      <div className="mx-auto grid max-w-lg grid-cols-5 items-end px-2">
+      <div className="mx-auto grid max-w-lg grid-cols-4 items-end px-2">
         {items.slice(0, 2).map((i) => (
           <NavItem key={i.to} {...i} active={pathname.startsWith(i.to)} />
         ))}
