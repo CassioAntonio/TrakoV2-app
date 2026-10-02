@@ -152,6 +152,26 @@ export function useRecorder() {
     setNow(t);
     save({ state: "recording", sport, points: [], startedAt: t, pausedMs: 0, lastPauseAt: null });
     startWatch();
+    // Posição imediata ao iniciar, sem esperar o primeiro ponto do watch
+    if (typeof navigator !== "undefined" && "geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setGpsAccuracy(pos.coords.accuracy ?? null);
+          const point: TrackPoint = {
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            t: pos.timestamp,
+            speed: pos.coords.speed,
+            alt: pos.coords.altitude,
+            heading: pos.coords.heading,
+            accuracy: pos.coords.accuracy,
+          };
+          setPoints((prev) => (prev.length ? prev : [point]));
+        },
+        () => {},
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 },
+      );
+    }
   }, [sport, startWatch]);
 
   const pause = useCallback(() => {
